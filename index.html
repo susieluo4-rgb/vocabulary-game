@@ -53,13 +53,11 @@
     <p>选择单元和游戏模式，开始练习！</p>
   </div>
 
-  <!-- 年级选择 -->
-  <div class="unit-tabs">
-    <button class="unit-tab active" data-unit="all">全部</button>
-    <button class="unit-tab" data-unit="四上">四上</button>
-    <button class="unit-tab" data-unit="四下">四下</button>
-    <button class="unit-tab" data-unit="五上">五上</button>
-    <button class="unit-tab" data-unit="五下">五下</button>
+  <!-- 词汇范围选择按钮 -->
+  <div class="unit-tabs" style="justify-content:center;">
+    <button id="btn-module-selector" class="unit-tab active" style="background:var(--primary);color:#fff;border-color:var(--primary);">
+      📚 全部词汇 ▼
+    </button>
   </div>
 
   <!-- 游戏模式 -->
@@ -340,6 +338,20 @@
 <!-- 爆星动画覆盖层 -->
 <div id="star-overlay"></div>
 
+
+<!-- 模块选择抽屉 -->
+<div id="module-selector" class="module-selector">
+  <div class="ms-header">
+    <span>📚 选择学习范围</span>
+    <button id="ms-close">×</button>
+  </div>
+  <div id="ms-body" class="ms-body"></div>
+  <div class="ms-footer">
+    <span>已选: <b id="ms-count">0</b> 词</span>
+    <button id="ms-start" class="btn btn-primary" disabled>开始学习 →</button>
+  </div>
+</div>
+<div id="ms-overlay" class="ms-overlay"></div>
 
 <!-- JS 加载顺序：words → app → 各模式 -->
 <script src="js/words.js"></script>

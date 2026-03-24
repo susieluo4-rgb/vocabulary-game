@@ -3,6 +3,7 @@
 const App = {
   state: {
     selectedUnit: 'all',
+    selectedModules: [],  // [] = 全部，否则为 ['四上 M1', '四下 M2', ...]
     lastMode: null,
     progress: {}
   },
@@ -331,9 +332,9 @@ const App = {
 
   // ── 词库查询 ─────────────────────────────────────────────────
   getSelectedWords() {
-    const u = this.state.selectedUnit;
-    if (u === 'all') return [...WORDS];
-    return WORDS.filter(w => w.unit === u || w.unit.startsWith(u + ' '));
+    const mods = this.state.selectedModules;
+    if (mods.length === 0) return [...WORDS];
+    return WORDS.filter(w => mods.includes(w.unit));
   },
 
   getReviewWords() {
@@ -341,6 +342,148 @@ const App = {
       const p = this.state.progress[w.word];
       return p && p.errors > 0;
     });
+  },
+
+  // ── 模块选择抽屉 ─────────────────────────────────────────────
+  // 从 WORDS 动态生成模块列表（按 book 分组）
+  _getModuleList() {
+    const map = {};
+    for (const w of WORDS) {
+      // book = '四上' from unit like '四上 M1'
+      const book = w.unit.replace(/ M\d+$/, '');
+      if (!map[book]) map[book] = new Set();
+      map[book].add(w.unit);
+    }
+    // 排序：四上 → 四下 → 五上 → 五下
+    const order = ['四上', '四下', '五上', '五下'];
+    return order.filter(b => map[b]).map(book => ({
+      book,
+      modules: [...map[book]].sort()
+    }));
+  },
+
+  _showModuleSelector() {
+    const mods = this.state.selectedModules;
+    const body = document.getElementById('ms-body');
+    body.innerHTML = '';
+
+    const list = this._getModuleList();
+    for (const { book, modules } of list) {
+      const bookDiv = document.createElement('div');
+
+      // 统计每个 module 的词数
+      const counts = {};
+      for (const m of modules) counts[m] = WORDS.filter(w => w.unit === m).length;
+
+      // Book 标题 + 全选
+      const header = document.createElement('div');
+      header.className = 'ms-book-title';
+      const allSelected = modules.every(m => mods.includes(m));
+      const toggleAll = document.createElement('span');
+      toggleAll.className = 'ms-book-toggle';
+      toggleAll.textContent = allSelected ? '取消全选' : '全选';
+      toggleAll.addEventListener('click', () => {
+        if (allSelected) {
+          modules.forEach(m => this._removeModule(m));
+        } else {
+          modules.forEach(m => this._addModule(m));
+        }
+        this._showModuleSelector(); // 重新渲染
+      });
+      header.textContent = book + ' ';
+      header.appendChild(toggleAll);
+      bookDiv.appendChild(header);
+
+      // 模块网格
+      const grid = document.createElement('div');
+      grid.className = 'ms-module-grid';
+      for (const m of modules) {
+        const item = document.createElement('div');
+        item.className = 'ms-module-item' + (mods.includes(m) ? ' selected' : '');
+        item.addEventListener('click', () => {
+          if (mods.includes(m)) this._removeModule(m);
+          else this._addModule(m);
+          this._updateModuleSelectorUI();
+        });
+        item.innerHTML = `
+          <input type="checkbox" ${mods.includes(m) ? 'checked' : ''} readonly>
+          <span class="ms-module-name">${m}</span>
+          <span class="ms-module-count">${counts[m]}词</span>
+        `;
+        grid.appendChild(item);
+      }
+      bookDiv.appendChild(grid);
+      body.appendChild(bookDiv);
+    }
+
+    this._updateModuleCount();
+    document.getElementById('module-selector').classList.add('active');
+    document.getElementById('ms-overlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  },
+
+  _closeModuleSelector() {
+    document.getElementById('module-selector').classList.remove('active');
+    document.getElementById('ms-overlay').classList.remove('active');
+    document.body.style.overflow = '';
+  },
+
+  _addModule(m) {
+    if (!this.state.selectedModules.includes(m)) {
+      this.state.selectedModules.push(m);
+    }
+  },
+
+  _removeModule(m) {
+    this.state.selectedModules = this.state.selectedModules.filter(x => x !== m);
+  },
+
+  _toggleModule(m) {
+    if (this.state.selectedModules.includes(m)) {
+      this._removeModule(m);
+    } else {
+      this._addModule(m);
+    }
+  },
+
+  _updateModuleSelectorUI() {
+    const mods = this.state.selectedModules;
+    // 更新每个 item 的选中状态
+    document.querySelectorAll('.ms-module-item').forEach(item => {
+      const name = item.querySelector('.ms-module-name')?.textContent;
+      if (name && mods.includes(name)) {
+        item.classList.add('selected');
+        item.querySelector('input').checked = true;
+      } else {
+        item.classList.remove('selected');
+        if (item.querySelector('input')) item.querySelector('input').checked = false;
+      }
+    });
+    // 更新 book toggle 文字
+    document.querySelectorAll('.ms-book-title').forEach(header => {
+      const toggle = header.querySelector('.ms-book-toggle');
+      const book = header.textContent.replace('全选', '').replace('取消全选', '').trim();
+      const modules = this._getModuleList().find(g => g.book === book)?.modules || [];
+      const allSelected = modules.every(m => mods.includes(m));
+      if (toggle) toggle.textContent = allSelected ? '取消全选' : '全选';
+    });
+    this._updateModuleCount();
+  },
+
+  _updateModuleCount() {
+    const count = this.getSelectedWords().length;
+    document.getElementById('ms-count').textContent = count;
+    const btn = document.getElementById('ms-start');
+    if (btn) btn.disabled = count === 0;
+    // 更新顶部按钮文字
+    const btn2 = document.getElementById('btn-module-selector');
+    if (btn2) {
+      if (this.state.selectedModules.length === 0) {
+        btn2.textContent = '📚 全部词汇 ▼';
+      } else {
+        btn2.textContent = `📚 已选 ${this.state.selectedModules.length} 个模块 ▼`;
+      }
+    }
   },
 
   // ── 语音朗读（标准美音）──────────────────────────────────────
@@ -441,8 +584,8 @@ const App = {
   },
 
   // 获取打乱后的词库，按陌生度从高到低排序
-  getWordsSmartSorted(unit) {
-    const words = unit === 'all' ? [...WORDS] : WORDS.filter(w => w.unit === unit || w.unit.startsWith(unit + ' '));
+  getWordsSmartSorted() {
+    const words = this.getSelectedWords();
     const sorted = [...words].sort((a, b) => {
       return this.getUnfamiliarity(b.word) - this.getUnfamiliarity(a.word);
     });
@@ -474,16 +617,15 @@ const App = {
   _pendingGame: {},  // 待启动的游戏信息 { mode, words }
 
   _showPreview(mode, minWords) {
-    const u = this.state.selectedUnit;
     const allWords = this.getSelectedWords();
     if (allWords.length < minWords) {
-      alert(`至少需要 ${minWords} 个单词，请选择更多单元`);
+      alert(`至少需要 ${minWords} 个单词，请选择更多模块`);
       return;
     }
     this.state.lastMode = mode;
 
     // 智能排序取词
-    const sorted = this.getWordsSmartSorted(u);
+    const sorted = this.getWordsSmartSorted();
     const words = this.shuffle(sorted);
 
     // 保存待启动游戏
@@ -560,37 +702,51 @@ const App = {
 
   // ── 首页事件绑定 ─────────────────────────────────────────────
   bindHomeEvents() {
-    document.querySelectorAll('.unit-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.unit-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        this.state.selectedUnit = tab.dataset.unit;
-      });
-    });
-
-    const startMode = (mode, minWords, fn) => {
-      const u = this.state.selectedUnit;
+    // 模块选择器按钮 → 打开抽屉
+    document.getElementById('btn-module-selector')?.addEventListener('click', () => this._showModuleSelector());
+    // 抽屉关闭按钮 & 遮罩
+    document.getElementById('ms-close')?.addEventListener('click', () => this._closeModuleSelector());
+    document.getElementById('ms-overlay')?.addEventListener('click', () => this._closeModuleSelector());
+    // 开始学习
+    document.getElementById('ms-start')?.addEventListener('click', () => {
+      this._closeModuleSelector();
+      // 根据当前按钮触发的模式启动
+      const mode = this._pendingMode || 'flashcard';
+      const minWords = mode === 'matching' ? 5 : mode === 'quiz' ? 4 : 2;
       const words = this.getSelectedWords();
       if (words.length < minWords) {
-        alert(`至少需要 ${minWords} 个单词，请选择更多单元`);
+        alert(`至少需要 ${minWords} 个单词，请选择更多模块`);
         return;
       }
       this.state.lastMode = mode;
       this._roundCoins = 0;
       this._hadPerfectRound = false;
-      // 智能排序：最不熟的词优先出现，同陌生度内随机打乱
-      const sorted = this.getWordsSmartSorted(u);
-      fn(this.shuffle(sorted));
-    };
+      const sorted = this.getWordsSmartSorted();
+      const shuffled = this.shuffle(sorted);
+      switch (mode) {
+        case 'flashcard': Flashcard.init(shuffled); break;
+        case 'quiz':      Quiz.init(shuffled);      break;
+        case 'spelling':  Spelling.init(shuffled);  break;
+        case 'matching':  Matching.init(shuffled);   break;
+      }
+    });
 
-    document.getElementById('btn-flashcard').addEventListener('click', () =>
-      this._showPreview('flashcard', 2));
-    document.getElementById('btn-quiz').addEventListener('click', () =>
-      this._showPreview('quiz', 4));
-    document.getElementById('btn-spelling').addEventListener('click', () =>
-      this._showPreview('spelling', 2));
-    document.getElementById('btn-matching').addEventListener('click', () =>
-      this._showPreview('matching', 5));
+    document.getElementById('btn-flashcard').addEventListener('click', () => {
+      this._pendingMode = 'flashcard';
+      this._showPreview('flashcard', 2);
+    });
+    document.getElementById('btn-quiz').addEventListener('click', () => {
+      this._pendingMode = 'quiz';
+      this._showPreview('quiz', 4);
+    });
+    document.getElementById('btn-spelling').addEventListener('click', () => {
+      this._pendingMode = 'spelling';
+      this._showPreview('spelling', 2);
+    });
+    document.getElementById('btn-matching').addEventListener('click', () => {
+      this._pendingMode = 'matching';
+      this._showPreview('matching', 5);
+    });
 
     // 预览页 → 开始学习按钮
     document.getElementById('btn-preview-start').addEventListener('click', () => {
@@ -624,8 +780,7 @@ const App = {
     document.getElementById('btn-reset').addEventListener('click', () => this.resetProgress());
 
     document.getElementById('btn-retry').addEventListener('click', () => {
-      const u = this.state.selectedUnit;
-      const sorted = this.getWordsSmartSorted(u);
+      const sorted = this.getWordsSmartSorted();
       const shuffled = this.shuffle(sorted);
       this._roundCoins = 0;
       this._hadPerfectRound = false;
