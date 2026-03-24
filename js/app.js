@@ -798,6 +798,26 @@ const App = {
       this.updateDailyTasksUI();
       this.showScreen('home');
     });
+
+    // 词库总览按钮
+    document.getElementById('btn-wordlist')?.addEventListener('click', () => this.showWordList());
+    document.getElementById('btn-back-from-wordlist')?.addEventListener('click', () => this.showScreen('home'));
+
+    // 词库搜索
+    document.getElementById('wl-search')?.addEventListener('input', (e) => {
+      this._wlQuery = e.target.value;
+      this._renderWordList();
+    });
+
+    // 词库筛选标签
+    document.querySelectorAll('.wl-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.wl-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this._wlFilter = btn.dataset.filter;
+        this._renderWordList();
+      });
+    });
   },
 
   // ── 结果屏幕（带金币展示）────────────────────────────────────
@@ -963,6 +983,92 @@ const App = {
     }
 
     this.showScreen('achievements');
+  },
+
+  // ── 词库总览 ─────────────────────────────────────────────────
+  _wlFilter: 'all',
+  _wlQuery: '',
+
+  showWordList() {
+    this._wlFilter = 'all';
+    this._wlQuery = '';
+    // 重置筛选标签
+    document.querySelectorAll('.wl-filter').forEach(b => b.classList.remove('active'));
+    document.querySelector('.wl-filter[data-filter="all"]')?.classList.add('active');
+    const searchInput = document.getElementById('wl-search');
+    if (searchInput) searchInput.value = '';
+    this._renderWordList();
+    this.showScreen('wordlist');
+  },
+
+  _renderWordList() {
+    const body = document.getElementById('wl-body');
+    if (!body) return;
+    body.innerHTML = '';
+
+    const filter = this._wlFilter;
+    const query = this._wlQuery.trim();
+
+    const filtered = WORDS.filter(w => {
+      const matchBook = filter === 'all' || w.unit.startsWith(filter + ' ');
+      const q = query.toLowerCase();
+      const matchQuery = !q ||
+        w.word.toLowerCase().includes(q) ||
+        w.meaning.toLowerCase().includes(q);
+      return matchBook && matchQuery;
+    });
+
+    if (filtered.length === 0) {
+      body.innerHTML = '<div class="wl-empty">没有找到匹配的单词</div>';
+      return;
+    }
+
+    // 按 book > module 分组
+    const groups = {};
+    for (const w of filtered) {
+      const book = w.unit.replace(/ M\d+$/, '');
+      const mod  = w.unit;
+      if (!groups[book]) groups[book] = {};
+      if (!groups[book][mod]) groups[book][mod] = [];
+      groups[book][mod].push(w);
+    }
+
+    const bookIcons = { '四上': '📘', '四下': '📗', '五上': '📙', '五下': '📕' };
+    const bookOrder = ['四上', '四下', '五上', '五下'];
+
+    for (const book of bookOrder) {
+      if (!groups[book]) continue;
+      const bookDiv = document.createElement('div');
+
+      const bookTitle = document.createElement('div');
+      bookTitle.className = 'wl-book-title';
+      bookTitle.textContent = (bookIcons[book] || '📚') + ' ' + book;
+      bookDiv.appendChild(bookTitle);
+
+      for (const mod of Object.keys(groups[book]).sort()) {
+        const modTitle = document.createElement('div');
+        modTitle.className = 'wl-module-title';
+        modTitle.textContent = mod;
+        bookDiv.appendChild(modTitle);
+
+        for (const w of groups[book][mod]) {
+          const level = this.getFamiliarityLevel(w.word);
+          const label = this.getFamiliarityLabel(level);
+          const color = this.getFamiliarityColor(level);
+          const item = document.createElement('div');
+          item.className = 'wl-word-item';
+          item.innerHTML = `
+            <span class="wl-word">${w.word}</span>
+            <span class="wl-phonetic">${w.phonetic || ''}</span>
+            <span class="wl-meaning">${w.meaning}</span>
+            <span class="wl-level" style="background:${color}22;color:${color}">${label}</span>
+          `;
+          item.addEventListener('click', () => this.speak(w.word));
+          bookDiv.appendChild(item);
+        }
+      }
+      body.appendChild(bookDiv);
+    }
   },
 
   // ── 爆星动画 ─────────────────────────────────────────────────
