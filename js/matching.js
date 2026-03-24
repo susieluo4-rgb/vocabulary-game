@@ -180,7 +180,7 @@ const Matching = {
 
   nextRound() {
     // 从原始词库再取一轮（App 会传入新 shuffle 的词）
-    const allWords = App.getSelectedWords ? App.getSelectedWords() : WORDS;
+    const allWords = App.getSelectedWords();
     Matching.init(App.shuffle(allWords));
   }
 };

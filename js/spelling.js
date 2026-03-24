@@ -96,6 +96,10 @@ const Spelling = {
 
     // 朗读单词
     setTimeout(() => App.speak(word.word), 400);
+    // 朗读例句
+    if (word.example) {
+      setTimeout(() => App.speak(word.example), 900);
+    }
 
     // 自动聚焦（iPad 上延迟以等待屏幕切换）
     setTimeout(() => input.focus(), 500);
