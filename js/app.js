@@ -24,7 +24,146 @@ const App = {
     titleIndex: 0     // 当前称号索引
   },
 
-  // 称号配置
+  // ── 每日任务系统 ────────────────────────────────────────────
+  DAILY_NEW_WORDS: 5,     // 每天新学目标词数
+  DAILY_REVIEW_GOAL: 10,  // 每天复习目标词数
+  newWordsToday: 0,        // 今日新学词数
+  reviewWordsToday: 0,     // 今日复习词数（历史错题）
+  newWordsLearnedSet: new Set(), // 今日新学过的词集合（防重复计数）
+
+  isWeekend() {
+    const day = new Date().getDay(); // 0=周日, 6=周六
+    return day === 0 || day === 6;
+  },
+
+  loadDailyTasks() {
+    try {
+      const s = localStorage.getItem('vocab-daily-v1');
+      if (s) {
+        const data = JSON.parse(s);
+        const today = new Date().toDateString();
+        if (data.date !== today) {
+          // 新的一天，重置
+          this.newWordsToday = 0;
+          this.reviewWordsToday = 0;
+          this.newWordsLearnedSet = new Set();
+        } else {
+          this.newWordsToday = data.newWordsToday || 0;
+          this.reviewWordsToday = data.reviewWordsToday || 0;
+          this.newWordsLearnedSet = new Set(data.newWordsLearnedSet || []);
+        }
+      }
+    } catch (_) {
+      this.newWordsToday = 0;
+      this.reviewWordsToday = 0;
+      this.newWordsLearnedSet = new Set();
+    }
+  },
+
+  saveDailyTasks() {
+    try {
+      localStorage.setItem('vocab-daily-v1', JSON.stringify({
+        date: new Date().toDateString(),
+        newWordsToday: this.newWordsToday,
+        reviewWordsToday: this.reviewWordsToday,
+        newWordsLearnedSet: [...this.newWordsLearnedSet]
+      }));
+    } catch (_) {}
+  },
+
+  // 判断一个词是否今日新学过的
+  isNewWordToday(word) {
+    const p = this.state.progress[word];
+    // 学过至少一次就不是新词
+    return !p || (p.correct + p.errors) === 0;
+  },
+
+  // 记录新词学习
+  recordNewWord(word) {
+    if (this.isWeekend()) return; // 周末不学新词
+    if (!this.isNewWordToday(word)) return; // 已经不是新词
+    if (this.newWordsLearnedSet.has(word)) return; // 今日已记录过
+    this.newWordsLearnedSet.add(word);
+    this.newWordsToday++;
+    this.saveDailyTasks();
+  },
+
+  // 记录复习（历史错题）
+  recordReview(word) {
+    this.reviewWordsToday++;
+    this.saveDailyTasks();
+  },
+
+  // 是否完成今日新学任务
+  isDailyNewWordDone() {
+    if (this.isWeekend()) return true; // 周末不要求新学
+    return this.newWordsToday >= this.DAILY_NEW_WORDS;
+  },
+
+  // 是否完成今日复习任务
+  isDailyReviewDone() {
+    return this.reviewWordsToday >= this.DAILY_REVIEW_GOAL;
+  },
+
+  // 获取今日任务状态
+  getDailyTaskStatus() {
+    const newDone = this.isDailyNewWordDone();
+    const reviewDone = this.isDailyReviewDone();
+    const allDone = newDone && reviewDone;
+    return {
+      isWeekend: this.isWeekend(),
+      newWords: { done: this.newWordsToday, goal: this.DAILY_NEW_WORDS, doneFlag: newDone },
+      review: { done: this.reviewWordsToday, goal: this.DAILY_REVIEW_GOAL, doneFlag: reviewDone },
+      allDone
+    };
+  },
+
+  // 更新首页任务面板
+  updateDailyTasksUI() {
+    const status = this.getDailyTaskStatus();
+    const panel = document.getElementById('daily-task-panel');
+    const newBar = document.getElementById('task-new-bar');
+    const reviewBar = document.getElementById('task-review-bar');
+    const newLabel = document.getElementById('task-new-label');
+    const reviewLabel = document.getElementById('task-review-label');
+    const allBadge = document.getElementById('task-all-done');
+    const taskCoinsEl = document.getElementById('task-coins');
+
+    if (!panel) return;
+
+    // 周末提示
+    if (status.isWeekend) {
+      newLabel.textContent = '周末自由复习 🎉';
+      newBar.style.width = '100%';
+      newBar.style.background = '#27AE60';
+    } else {
+      newLabel.textContent = `新学单词 ${status.newWords.done}/${status.newWords.goal}`;
+      newBar.style.width = Math.min(100, status.newWords.done / status.newWords.goal * 100) + '%';
+      newBar.style.background = status.newWords.doneFlag ? '#27AE60' : '#3498DB';
+    }
+
+    reviewLabel.textContent = `复习错题 ${status.review.done}/${status.review.goal}`;
+    reviewBar.style.width = Math.min(100, status.review.done / status.review.goal * 100) + '%';
+    reviewBar.style.background = status.review.doneFlag ? '#27AE60' : '#F39C12';
+
+    // 全部完成
+    if (status.allDone) {
+      allBadge.style.display = 'block';
+      allBadge.textContent = '🎉 今日任务完成！';
+    } else {
+      allBadge.style.display = 'none';
+    }
+
+    // 今日金币
+    if (taskCoinsEl) {
+      taskCoinsEl.textContent = `今日赚取 ${this.coins.todayCoins} 金币`;
+    }
+  },
+
+  // ── 每日任务系统 ────────────────────────────────────────────
+  // （每日任务相关方法已在上方定义）
+
+  // ── 称号配置 ────────────────────────────────────────────────
   TITLES: [
     { name: '英语小白',   threshold: 0 },
     { name: '单词学徒',   threshold: 50 },
@@ -57,9 +196,11 @@ const App = {
   init() {
     this.loadProgress();
     this.loadCoins();
+    this.loadDailyTasks();
     this.bindHomeEvents();
     this.updateHomeProgress();
     this.updateCoinBar();
+    this.updateDailyTasksUI();
     this._initVoice();
     this.showScreen('home');
     // 成就页面入口
@@ -262,6 +403,7 @@ const App = {
   },
 
   saveProgress(word, correct) {
+    const isNew = !this.state.progress[word] || (this.state.progress[word].correct + this.state.progress[word].errors) === 0;
     if (!this.state.progress[word]) {
       this.state.progress[word] = { correct: 0, errors: 0 };
     }
@@ -271,6 +413,16 @@ const App = {
     try {
       localStorage.setItem('vocab-progress-v1', JSON.stringify(this.state.progress));
     } catch (_) {}
+
+    // 记录每日任务
+    if (correct && isNew) {
+      // 新词第一次答对 → 新学任务
+      this.recordNewWord(word);
+    }
+    if (!correct) {
+      // 答错 → 复习任务
+      this.recordReview(word);
+    }
   },
 
   getMastery(word) {
@@ -454,8 +606,10 @@ const App = {
     });
 
     // 预览页返回
-    document.getElementById('btn-preview-back').addEventListener('click', () =>
-      this.showScreen('home'));
+    document.getElementById('btn-preview-back').addEventListener('click', () => {
+      this.updateDailyTasksUI();
+      this.showScreen('home');
+    });
 
     document.getElementById('btn-review').addEventListener('click', () => {
       const words = this.getReviewWords();
@@ -486,6 +640,7 @@ const App = {
     document.getElementById('btn-home-from-results').addEventListener('click', () => {
       this.updateHomeProgress();
       this.updateCoinBar();
+      this.updateDailyTasksUI();
       this.showScreen('home');
     });
   },

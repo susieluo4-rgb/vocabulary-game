@@ -25,6 +25,29 @@
     <button id="btn-achievements" class="btn-ach">🏅</button>
   </div>
 
+  <!-- 每日任务面板 -->
+  <div class="daily-task-panel" id="daily-task-panel">
+    <div class="task-title-row">
+      <span class="task-title">📋 今日任务</span>
+      <span id="task-coins" class="task-coins">今日赚取 0 金币</span>
+    </div>
+    <!-- 新学单词 -->
+    <div class="task-item">
+      <span class="task-item-label" id="task-new-label">新学单词 0/5</span>
+      <div class="task-bar-wrap">
+        <div class="task-bar-fill" id="task-new-bar" style="width:0%;background:#3498DB"></div>
+      </div>
+    </div>
+    <!-- 复习错题 -->
+    <div class="task-item">
+      <span class="task-item-label" id="task-review-label">复习错题 0/10</span>
+      <div class="task-bar-wrap">
+        <div class="task-bar-fill" id="task-review-bar" style="width:0%;background:#F39C12"></div>
+      </div>
+    </div>
+    <div id="task-all-done" class="task-all-done" style="display:none">🎉 今日任务完成！</div>
+  </div>
+
   <div class="home-title">
     <h1>单词大挑战</h1>
     <p>选择单元和游戏模式，开始练习！</p>
