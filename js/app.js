@@ -418,13 +418,11 @@ const App = {
 
     this._updateModuleCount();
     document.getElementById('module-selector').classList.add('active');
-    document.getElementById('ms-overlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
   },
 
   _closeModuleSelector() {
     document.getElementById('module-selector').classList.remove('active');
-    document.getElementById('ms-overlay').classList.remove('active');
+
     document.body.style.overflow = '';
   },
 
@@ -704,9 +702,8 @@ const App = {
   bindHomeEvents() {
     // 模块选择器按钮 → 打开抽屉
     document.getElementById('btn-module-selector')?.addEventListener('click', () => this._showModuleSelector());
-    // 抽屉关闭按钮 & 遮罩
+    // 抽屉关闭按钮
     document.getElementById('ms-close')?.addEventListener('click', () => this._closeModuleSelector());
-    document.getElementById('ms-overlay')?.addEventListener('click', () => this._closeModuleSelector());
     // 开始学习
     document.getElementById('ms-start')?.addEventListener('click', () => {
       this._closeModuleSelector();
