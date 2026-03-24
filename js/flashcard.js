@@ -57,6 +57,14 @@ const Flashcard = {
     document.getElementById('fc-progress-fill').style.width =
       `${(done / total) * 100}%`;
 
+    // 熟悉度标签
+    const level = App.getFamiliarityLevel(word.word);
+    const fcBadge = document.getElementById('fc-familiarity');
+    if (fcBadge) {
+      fcBadge.textContent = App.getFamiliarityLabel(level);
+      fcBadge.style.background = App.getFamiliarityColor(level);
+    }
+
     // Card faces
     document.getElementById('fc-word').textContent = word.word;
     document.getElementById('fc-meaning').textContent = word.meaning;

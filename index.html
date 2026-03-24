@@ -87,6 +87,7 @@
       <div class="progress-bar-fill" id="fc-progress-fill" style="width:0%"></div>
     </div>
     <span id="fc-counter" style="font-weight:700;min-width:52px;text-align:right">1/10</span>
+    <span id="fc-familiarity" class="fam-badge">⭐未学</span>
   </header>
 
   <div class="fc-body">
@@ -127,6 +128,7 @@
     </div>
     <span id="quiz-counter" style="font-weight:700;min-width:52px;text-align:right">1/10</span>
     <span id="quiz-streak" class="quiz-streak"></span>
+    <span id="quiz-familiarity" class="fam-badge">⭐未学</span>
   </header>
 
   <div class="quiz-body">
@@ -165,6 +167,7 @@
       <div class="progress-bar-fill" id="spell-progress-fill" style="width:0%"></div>
     </div>
     <span id="spell-counter" style="font-weight:700;min-width:52px;text-align:right">1/10</span>
+    <span id="spell-familiarity" class="fam-badge">⭐未学</span>
   </header>
 
   <div class="spell-body">
@@ -264,6 +267,52 @@
 <!-- ======================================================
      屏幕 7 — 成就页
      ====================================================== -->
+<div id="screen-achievements" class="screen">
+  <header class="ach-header">
+    <button class="btn-back" id="btn-back-from-achievements">←</button>
+    <h2>🏅 成就中心</h2>
+    <div style="width:44px"></div>
+  </header>
+
+  <div class="ach-body">
+    <!-- 称号进度 -->
+    <div class="ach-title-card">
+      <div class="ach-title-name" id="ach-current-title">英语小白</div>
+      <div id="title-progress" class="title-progress-wrap"></div>
+    </div>
+
+    <!-- 数据统计 -->
+    <div id="ach-stats" class="ach-stats"></div>
+
+    <!-- 徽章墙 -->
+    <h3 class="ach-section-title">🏅 成就徽章</h3>
+    <div id="badges-grid" class="badges-grid"></div>
+  </div>
+</div>
+
+
+<!-- ======================================================
+     屏幕 8 — 词单预览（开始游戏前）
+     ====================================================== -->
+<div id="screen-preview" class="screen">
+  <header class="preview-header">
+    <button class="btn-back" id="btn-preview-back">←</button>
+    <h2 id="preview-title">闪卡认读</h2>
+    <div style="width:44px"></div>
+  </header>
+
+  <div class="preview-body">
+    <p id="preview-subtitle" class="preview-subtitle"></p>
+    <div id="preview-legend" class="preview-legend">
+      <span><span class="dot" style="background:#E74C3C"></span>未学</span>
+      <span><span class="dot" style="background:#F39C12"></span>薄弱</span>
+      <span><span class="dot" style="background:#3498DB"></span>一般</span>
+      <span><span class="dot" style="background:#27AE60"></span>熟悉</span>
+    </div>
+    <div id="preview-word-list" class="preview-word-list"></div>
+    <button class="btn btn-primary btn-start" id="btn-preview-start">开始学习</button>
+  </div>
+</div>
 <div id="screen-achievements" class="screen">
   <header class="ach-header">
     <button class="btn-back" id="btn-back-from-achievements">←</button>

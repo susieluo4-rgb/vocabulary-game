@@ -297,6 +297,72 @@ const App = {
     return sorted;
   },
 
+  // ── 熟悉度等级 ──────────────────────────────────────────────
+  // 0=未学(红色), 1=薄弱(橙色), 2=一般(蓝色), 3=熟悉(绿色)
+  getFamiliarityLevel(word) {
+    const p = this.state.progress[word];
+    if (!p || (p.correct + p.errors) === 0) return 0; // 未学
+    const rate = p.correct / (p.correct + p.errors);
+    if (rate >= 0.8) return 3; // 熟悉
+    if (rate >= 0.4) return 2; // 一般
+    return 1; // 薄弱
+  },
+
+  getFamiliarityLabel(level) {
+    const map = { 0: '⭐未学', 1: '🔥薄弱', 2: '📖一般', 3: '✅熟悉' };
+    return map[level] || map[0];
+  },
+
+  getFamiliarityColor(level) {
+    const map = { 0: '#E74C3C', 1: '#F39C12', 2: '#3498DB', 3: '#27AE60' };
+    return map[level] || map[0];
+  },
+
+  // ── 词单预览 ─────────────────────────────────────────────────
+  _pendingGame: {},  // 待启动的游戏信息 { mode, words }
+
+  _showPreview(mode, minWords) {
+    const u = this.state.selectedUnit;
+    const allWords = this.getSelectedWords();
+    if (allWords.length < minWords) {
+      alert(`至少需要 ${minWords} 个单词，请选择更多单元`);
+      return;
+    }
+    this.state.lastMode = mode;
+
+    // 智能排序取词
+    const sorted = this.getWordsSmartSorted(u);
+    const words = this.shuffle(sorted);
+
+    // 保存待启动游戏
+    this._pendingGame = { mode, words };
+
+    // 模式名称映射
+    const modeNames = { flashcard: '闪卡认读', quiz: '四选一', spelling: '拼写练习', matching: '连连看' };
+    document.getElementById('preview-title').textContent = modeNames[mode];
+    document.getElementById('preview-subtitle').textContent =
+      `共 ${words.length} 词 · 陌生词优先`;
+
+    // 渲染词单
+    const list = document.getElementById('preview-word-list');
+    list.innerHTML = '';
+    words.forEach(w => {
+      const level = this.getFamiliarityLevel(w.word);
+      const badge = App.getFamiliarityLabel(level);
+      const color = App.getFamiliarityColor(level);
+      const item = document.createElement('div');
+      item.className = 'preview-word-item';
+      item.innerHTML = `
+        <span class="word-badge" style="background:${color}">${badge}</span>
+        <span class="word-english">${w.word}</span>
+        <span class="word-meaning">${w.meaning}</span>
+      `;
+      list.appendChild(item);
+    });
+
+    this.showScreen('preview');
+  },
+
   resetProgress() {
     if (confirm('确定要清除所有学习进度吗？')) {
       this.state.progress = {};
@@ -366,13 +432,30 @@ const App = {
     };
 
     document.getElementById('btn-flashcard').addEventListener('click', () =>
-      startMode('flashcard', 2, w => Flashcard.init(w)));
+      this._showPreview('flashcard', 2));
     document.getElementById('btn-quiz').addEventListener('click', () =>
-      startMode('quiz', 4, w => Quiz.init(w)));
+      this._showPreview('quiz', 4));
     document.getElementById('btn-spelling').addEventListener('click', () =>
-      startMode('spelling', 2, w => Spelling.init(w)));
+      this._showPreview('spelling', 2));
     document.getElementById('btn-matching').addEventListener('click', () =>
-      startMode('matching', 5, w => Matching.init(w)));
+      this._showPreview('matching', 5));
+
+    // 预览页 → 开始学习按钮
+    document.getElementById('btn-preview-start').addEventListener('click', () => {
+      const { mode, words } = this._pendingGame;
+      this._roundCoins = 0;
+      this._hadPerfectRound = false;
+      switch (mode) {
+        case 'flashcard': Flashcard.init(words); break;
+        case 'quiz':      Quiz.init(words);      break;
+        case 'spelling':  Spelling.init(words);  break;
+        case 'matching':  Matching.init(words);  break;
+      }
+    });
+
+    // 预览页返回
+    document.getElementById('btn-preview-back').addEventListener('click', () =>
+      this.showScreen('home'));
 
     document.getElementById('btn-review').addEventListener('click', () => {
       const words = this.getReviewWords();

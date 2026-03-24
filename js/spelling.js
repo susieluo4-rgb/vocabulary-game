@@ -65,6 +65,14 @@ const Spelling = {
     document.getElementById('spell-progress-fill').style.width =
       `${(this.index / total) * 100}%`;
 
+    // 熟悉度标签
+    const level = App.getFamiliarityLevel(word.word);
+    const spellBadge = document.getElementById('spell-familiarity');
+    if (spellBadge) {
+      spellBadge.textContent = App.getFamiliarityLabel(level);
+      spellBadge.style.background = App.getFamiliarityColor(level);
+    }
+
     // 中文提示
     document.getElementById('spell-meaning').textContent = word.meaning;
     document.getElementById('spell-example').textContent = word.example || '';

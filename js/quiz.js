@@ -51,6 +51,14 @@ const Quiz = {
     document.getElementById('quiz-streak').textContent =
       this.streak > 1 ? `🔥 ${this.streak}` : '';
 
+    // 熟悉度标签
+    const level = App.getFamiliarityLevel(word.word);
+    const quizBadge = document.getElementById('quiz-familiarity');
+    if (quizBadge) {
+      quizBadge.textContent = App.getFamiliarityLabel(level);
+      quizBadge.style.background = App.getFamiliarityColor(level);
+    }
+
     // 问题：显示中文
     document.getElementById('quiz-question').textContent = word.meaning;
 
