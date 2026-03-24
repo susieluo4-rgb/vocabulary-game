@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>单词大挑战</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ======================================================
+     屏幕 1 — 首页
+     ====================================================== -->
+<div id="screen-home" class="screen">
+  <div class="home-title">
+    <h1>单词大挑战</h1>
+    <p>选择单元和游戏模式，开始练习！</p>
+  </div>
+
+  <!-- 年级选择 -->
+  <div class="unit-tabs">
+    <button class="unit-tab active" data-unit="all">全部</button>
+    <button class="unit-tab" data-unit="四上">四上</button>
+    <button class="unit-tab" data-unit="四下">四下</button>
+    <button class="unit-tab" data-unit="五上">五上</button>
+    <button class="unit-tab" data-unit="五下">五下</button>
+  </div>
+
+  <!-- 游戏模式 -->
+  <div class="mode-grid">
+    <button class="mode-card" id="btn-flashcard">
+      <div class="mode-icon">🃏</div>
+      <div class="mode-label">闪卡认读</div>
+      <div class="mode-desc">翻卡看中文释义</div>
+    </button>
+    <button class="mode-card" id="btn-quiz">
+      <div class="mode-icon">🎯</div>
+      <div class="mode-label">四选一</div>
+      <div class="mode-desc">选出正确英文单词</div>
+    </button>
+    <button class="mode-card" id="btn-spelling">
+      <div class="mode-icon">✏️</div>
+      <div class="mode-label">拼写练习</div>
+      <div class="mode-desc">拼出正确英文单词</div>
+    </button>
+    <button class="mode-card" id="btn-matching">
+      <div class="mode-icon">🔗</div>
+      <div class="mode-label">连连看</div>
+      <div class="mode-desc">配对英文与中文</div>
+    </button>
+  </div>
+
+  <!-- 错题本 + 重置 -->
+  <div class="secondary-actions">
+    <button id="btn-review" style="display:none">错题本</button>
+    <button id="btn-reset">清除进度</button>
+  </div>
+
+  <!-- 学习进度 -->
+  <div class="progress-section">
+    <h3>学习进度</h3>
+    <div id="progress-list"></div>
+  </div>
+</div>
+
+
+<!-- ======================================================
+     屏幕 2 — 闪卡认读
+     ====================================================== -->
+<div id="screen-flashcard" class="screen">
+  <header class="game-header">
+    <button class="btn-back" id="btn-fc-back">←</button>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="fc-progress-fill" style="width:0%"></div>
+    </div>
+    <span id="fc-counter" style="font-weight:700;min-width:52px;text-align:right">1/10</span>
+  </header>
+
+  <div class="fc-body">
+    <!-- 3D 翻转卡片 -->
+    <div class="card-scene">
+      <div id="flash-card">
+        <div class="card-face card-front">
+          <div id="fc-word">apple</div>
+          <div id="fc-tap-hint">点击翻转 ▾</div>
+        </div>
+        <div class="card-face card-back">
+          <div id="fc-meaning">苹果</div>
+          <div id="fc-example">I eat an apple every day.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮（翻转后显示） -->
+    <div id="fc-actions" class="hidden" style="display:flex;gap:12px;width:100%;max-width:500px;">
+      <button class="btn btn-ghost" id="btn-fc-again" style="flex:1">再看 ↺</button>
+      <button class="btn btn-primary" id="btn-fc-know" style="flex:1;background:var(--green)">认识 ✓</button>
+    </div>
+
+    <!-- 朗读按钮 -->
+    <button id="btn-fc-speak" title="朗读单词">🔊</button>
+  </div>
+</div>
+
+
+<!-- ======================================================
+     屏幕 3 — 四选一
+     ====================================================== -->
+<div id="screen-quiz" class="screen">
+  <header class="game-header">
+    <button class="btn-back" id="btn-quiz-back">←</button>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="quiz-progress-fill" style="width:0%"></div>
+    </div>
+    <span id="quiz-counter" style="font-weight:700;min-width:52px;text-align:right">1/10</span>
+    <span id="quiz-streak" class="quiz-streak"></span>
+  </header>
+
+  <div class="quiz-body">
+    <!-- 题目 -->
+    <div class="quiz-question-card">
+      <div class="quiz-label">这个单词的英文是？</div>
+      <div id="quiz-question">苹果</div>
+    </div>
+
+    <!-- 四个选项 -->
+    <div class="options-grid">
+      <button class="quiz-option" id="quiz-opt-A">apple</button>
+      <button class="quiz-option" id="quiz-opt-B">banana</button>
+      <button class="quiz-option" id="quiz-opt-C">orange</button>
+      <button class="quiz-option" id="quiz-opt-D">grape</button>
+    </div>
+
+    <!-- 反馈 -->
+    <div id="quiz-feedback" class="quiz-feedback"></div>
+
+    <!-- 下一题 -->
+    <button class="btn btn-secondary hidden" id="btn-quiz-next" style="width:100%;max-width:520px;">
+      下一题 →
+    </button>
+  </div>
+</div>
+
+
+<!-- ======================================================
+     屏幕 4 — 拼写练习
+     ====================================================== -->
+<div id="screen-spelling" class="screen">
+  <header class="game-header">
+    <button class="btn-back" id="btn-spell-back">←</button>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="spell-progress-fill" style="width:0%"></div>
+    </div>
+    <span id="spell-counter" style="font-weight:700;min-width:52px;text-align:right">1/10</span>
+  </header>
+
+  <div class="spell-body">
+    <!-- 中文释义卡片 -->
+    <div class="spell-meaning-card">
+      <div id="spell-meaning">苹果</div>
+      <div id="spell-example">I eat an apple every day.</div>
+    </div>
+
+    <!-- 朗读按钮 -->
+    <button id="btn-spell-speak" title="朗读单词">🔊</button>
+
+    <!-- 字母框 -->
+    <div id="spell-boxes"></div>
+
+    <!-- 输入框 -->
+    <input
+      type="text"
+      id="spell-input"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      placeholder="在此输入单词…"
+    />
+
+    <!-- 操作按钮 -->
+    <div class="spell-actions">
+      <button class="btn" id="btn-spell-hint" style="flex:1;background:#fff;color:var(--purple);border:2px solid var(--purple);">
+        提示 💡
+      </button>
+      <button class="btn btn-primary" id="btn-spell-submit" style="flex:2;background:var(--purple);">
+        确认 ✓
+      </button>
+    </div>
+
+    <!-- 反馈 -->
+    <div id="spell-feedback" class="spell-feedback"></div>
+
+    <!-- 下一题 -->
+    <button class="btn hidden" id="btn-spell-next" style="width:100%;max-width:520px;background:var(--green);color:#fff;">
+      下一题 →
+    </button>
+  </div>
+</div>
+
+
+<!-- ======================================================
+     屏幕 5 — 连连看
+     ====================================================== -->
+<div id="screen-matching" class="screen">
+  <header class="game-header">
+    <button class="btn-back" id="btn-match-back">←</button>
+    <h2>连连看</h2>
+    <span id="match-progress" style="font-weight:700;min-width:52px;text-align:right">0/5</span>
+  </header>
+
+  <div class="match-body">
+    <div class="match-stats">
+      <span>点击左右两边配对</span>
+      <span id="match-timer"></span>
+    </div>
+
+    <div class="match-grid">
+      <div class="match-col" id="match-left"></div>
+      <div class="match-col" id="match-right"></div>
+    </div>
+
+    <button class="btn hidden" id="btn-match-next" style="background:var(--purple);color:#fff;">
+      再来一轮 →
+    </button>
+  </div>
+</div>
+
+
+<!-- ======================================================
+     屏幕 6 — 结果页
+     ====================================================== -->
+<div id="screen-results" class="screen">
+  <div class="results-body">
+    <div id="result-stars">⭐⭐⭐</div>
+    <div id="result-score">10 / 10 正确（100%）</div>
+    <div id="result-extra"></div>
+    <div id="result-message">太棒了！你是单词小达人！</div>
+
+    <div class="results-actions">
+      <button class="btn" id="btn-retry"             style="flex:1;background:var(--primary);color:#fff;">再来一次</button>
+      <button class="btn btn-ghost" id="btn-home-from-results" style="flex:1;">回主页</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- 爆星动画覆盖层 -->
+<div id="star-overlay"></div>
+
+
+<!-- JS 加载顺序：words → app → 各模式 -->
+<script src="js/words.js"></script>
+<script src="js/app.js"></script>
+<script src="js/flashcard.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/spelling.js"></script>
+<script src="js/matching.js"></script>
+
+</body>
+</html>
