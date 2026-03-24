@@ -279,6 +279,24 @@ const App = {
     return p.correct / (p.correct + p.errors);
   },
 
+  // ── 按熟悉度排序（陌生词优先）────────────────────────────────
+  //陌生度分数：未学过=1.0（最高优先），答错越多越优先，答对越多越靠后
+  getUnfamiliarity(word) {
+    const p = this.state.progress[word];
+    if (!p || (p.correct + p.errors) === 0) return 1.0; // 未学过，优先
+    const total = p.correct + p.errors;
+    return p.errors / total; // 错误率越高越靠前
+  },
+
+  // 获取打乱后的词库，按陌生度从高到低排序
+  getWordsSmartSorted(unit) {
+    const words = unit === 'all' ? [...WORDS] : WORDS.filter(w => w.unit === unit || w.unit.startsWith(unit + ' '));
+    const sorted = [...words].sort((a, b) => {
+      return this.getUnfamiliarity(b.word) - this.getUnfamiliarity(a.word);
+    });
+    return sorted;
+  },
+
   resetProgress() {
     if (confirm('确定要清除所有学习进度吗？')) {
       this.state.progress = {};
@@ -333,6 +351,7 @@ const App = {
     });
 
     const startMode = (mode, minWords, fn) => {
+      const u = this.state.selectedUnit;
       const words = this.getSelectedWords();
       if (words.length < minWords) {
         alert(`至少需要 ${minWords} 个单词，请选择更多单元`);
@@ -341,7 +360,9 @@ const App = {
       this.state.lastMode = mode;
       this._roundCoins = 0;
       this._hadPerfectRound = false;
-      fn(this.shuffle(words));
+      // 智能排序：最不熟的词优先出现，同陌生度内随机打乱
+      const sorted = this.getWordsSmartSorted(u);
+      fn(this.shuffle(sorted));
     };
 
     document.getElementById('btn-flashcard').addEventListener('click', () =>
@@ -366,8 +387,9 @@ const App = {
     document.getElementById('btn-reset').addEventListener('click', () => this.resetProgress());
 
     document.getElementById('btn-retry').addEventListener('click', () => {
-      const words = this.getSelectedWords();
-      const shuffled = this.shuffle(words);
+      const u = this.state.selectedUnit;
+      const sorted = this.getWordsSmartSorted(u);
+      const shuffled = this.shuffle(sorted);
       this._roundCoins = 0;
       this._hadPerfectRound = false;
       switch (this.state.lastMode) {
