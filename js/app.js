@@ -198,10 +198,12 @@ const App = {
     this.loadProgress();
     this.loadCoins();
     this.loadDailyTasks();
+    this.loadSelectedModules();
     this.bindHomeEvents();
     this.updateHomeProgress();
     this.updateCoinBar();
     this.updateDailyTasksUI();
+    this._updateModuleCount();
     this._initVoice();
     this.showScreen('home');
     // 成就页面入口
@@ -338,7 +340,9 @@ const App = {
   },
 
   getReviewWords() {
+    const mods = this.state.selectedModules;
     return WORDS.filter(w => {
+      if (mods.length > 0 && !mods.includes(w.unit)) return false;
       const p = this.state.progress[w.word];
       return p && p.errors > 0;
     });
@@ -426,16 +430,34 @@ const App = {
     document.getElementById('module-selector').classList.remove('active');
     document.getElementById('ms-overlay').classList.remove('active');
     document.body.style.overflow = '';
+    this.saveSelectedModules();
   },
 
   _addModule(m) {
     if (!this.state.selectedModules.includes(m)) {
       this.state.selectedModules.push(m);
     }
+    this.saveSelectedModules();
   },
 
   _removeModule(m) {
     this.state.selectedModules = this.state.selectedModules.filter(x => x !== m);
+    this.saveSelectedModules();
+  },
+
+  saveSelectedModules() {
+    try {
+      localStorage.setItem('vocab-modules-v1', JSON.stringify(this.state.selectedModules));
+    } catch (_) {}
+  },
+
+  loadSelectedModules() {
+    try {
+      const s = localStorage.getItem('vocab-modules-v1');
+      if (s) this.state.selectedModules = JSON.parse(s);
+    } catch (_) {
+      this.state.selectedModules = [];
+    }
   },
 
   _toggleModule(m) {
