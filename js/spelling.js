@@ -13,6 +13,7 @@ const Spelling = {
     this.index = 0;
     this.score = 0;
 
+    App.startGame('spelling');
     App.showScreen('spelling');
     this.bindEvents();
     this.renderWord();
@@ -168,6 +169,12 @@ const Spelling = {
       this.score++;
       fb.textContent = '✓ 拼写正确！太棒了！';
       fb.className = 'spell-feedback fb-correct';
+      // 金币：无提示满分 +5，有提示 +2
+      if (this.hintsRevealed === 0) {
+        App.earn('spelling', 5);
+      } else {
+        App.earn('spelling-hint', 2);
+      }
     } else {
       fb.textContent = `✗ 正确拼写：${this.words[this.index].word}`;
       fb.className = 'spell-feedback fb-wrong';

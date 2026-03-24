@@ -15,6 +15,7 @@ const Matching = {
     this.matchedCount = 0;
     this.startTime = null;
 
+    App.startGame('matching');
     App.showScreen('matching');
     this.bindEvents();
     this.render();
@@ -137,6 +138,7 @@ const Matching = {
       }, 400);
 
       App.saveProgress(word, true);
+      App.earn('matching', 2); // 每配对成功 +2 金币
       this.matchedCount++;
       document.getElementById('match-progress').textContent =
         `${this.matchedCount} / ${this.PAIR_COUNT}`;

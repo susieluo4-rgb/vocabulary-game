@@ -16,6 +16,7 @@ const Flashcard = {
     this.total = words.length;
     this.flipped = false;
 
+    App.startGame('flashcard');
     App.showScreen('flashcard');
     this.bindEvents();
     this.render();
@@ -83,13 +84,14 @@ const Flashcard = {
 
   know() {
     App.saveProgress(this.queue[this.index].word, true);
+    App.earn('flashcard', 2);   // 认识 +2 金币
     this.known++;
     this.advance();
   },
 
   again() {
     App.saveProgress(this.queue[this.index].word, false);
-    // 把这张卡移到队尾，再练一次
+    // 把这张卡移到队尾，再练一次（无金币）
     const card = this.queue.splice(this.index, 1)[0];
     this.queue.push(card);
     // 若 index 越界则回到 0

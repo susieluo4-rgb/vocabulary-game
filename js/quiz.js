@@ -14,6 +14,7 @@ const Quiz = {
     this.streak = 0;
     this.answered = false;
 
+    App.startGame('quiz');
     App.showScreen('quiz');
     this.bindEvents();
     this.renderQuestion();
@@ -92,6 +93,9 @@ const Quiz = {
       document.getElementById('quiz-feedback').textContent = '✓ 正确！';
       document.getElementById('quiz-feedback').className = 'quiz-feedback correct';
       App.speak(word.word);
+      // 金币：答对 +3，连击≥3 额外 +1
+      App.earn('quiz', 3);
+      if (this.streak >= 3) App.earn('quiz-streak', 1);
     } else {
       this.streak = 0;
       btn.classList.add('option-wrong');

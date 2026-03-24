@@ -14,6 +14,17 @@
      屏幕 1 — 首页
      ====================================================== -->
 <div id="screen-home" class="screen">
+  <!-- 金币栏 -->
+  <div class="coin-bar">
+    <span class="coin-icon">🪙</span>
+    <span id="coin-total">0</span>
+    <span class="coin-divider">·</span>
+    <span>今日</span>
+    <span id="coin-today">0</span>
+    <span class="title-badge" id="title-badge">英语小白</span>
+    <button id="btn-achievements" class="btn-ach">🏅</button>
+  </div>
+
   <div class="home-title">
     <h1>单词大挑战</h1>
     <p>选择单元和游戏模式，开始练习！</p>
@@ -235,7 +246,10 @@
 <div id="screen-results" class="screen">
   <div class="results-body">
     <div id="result-stars">⭐⭐⭐</div>
+    <div id="result-coins" class="result-coins">+0 🪙</div>
     <div id="result-score">10 / 10 正确（100%）</div>
+    <div id="result-new-title" class="result-title-upgrade"></div>
+    <div id="result-new-badges" class="result-badges" style="display:none"></div>
     <div id="result-extra"></div>
     <div id="result-message">太棒了！你是单词小达人！</div>
 
@@ -243,6 +257,33 @@
       <button class="btn" id="btn-retry"             style="flex:1;background:var(--primary);color:#fff;">再来一次</button>
       <button class="btn btn-ghost" id="btn-home-from-results" style="flex:1;">回主页</button>
     </div>
+  </div>
+</div>
+
+
+<!-- ======================================================
+     屏幕 7 — 成就页
+     ====================================================== -->
+<div id="screen-achievements" class="screen">
+  <header class="ach-header">
+    <button class="btn-back" id="btn-back-from-achievements">←</button>
+    <h2>🏅 成就中心</h2>
+    <div style="width:44px"></div>
+  </header>
+
+  <div class="ach-body">
+    <!-- 称号进度 -->
+    <div class="ach-title-card">
+      <div class="ach-title-name" id="ach-current-title">英语小白</div>
+      <div id="title-progress" class="title-progress-wrap"></div>
+    </div>
+
+    <!-- 数据统计 -->
+    <div id="ach-stats" class="ach-stats"></div>
+
+    <!-- 徽章墙 -->
+    <h3 class="ach-section-title">🏅 成就徽章</h3>
+    <div id="badges-grid" class="badges-grid"></div>
   </div>
 </div>
 
