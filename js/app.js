@@ -367,7 +367,6 @@ const App = {
   },
 
   _showModuleSelector() {
-    const mods = this.state.selectedModules;
     const body = document.getElementById('ms-body');
     body.innerHTML = '';
 
@@ -382,7 +381,7 @@ const App = {
       // Book 标题 + 全选
       const header = document.createElement('div');
       header.className = 'ms-book-title';
-      const allSelected = modules.every(m => mods.includes(m));
+      const allSelected = modules.every(m => this.state.selectedModules.includes(m));
       const toggleAll = document.createElement('span');
       toggleAll.className = 'ms-book-toggle';
       toggleAll.textContent = allSelected ? '取消全选' : '全选';
@@ -402,15 +401,16 @@ const App = {
       const grid = document.createElement('div');
       grid.className = 'ms-module-grid';
       for (const m of modules) {
+        const isSelected = this.state.selectedModules.includes(m);
         const item = document.createElement('div');
-        item.className = 'ms-module-item' + (mods.includes(m) ? ' selected' : '');
+        item.className = 'ms-module-item' + (isSelected ? ' selected' : '');
         item.addEventListener('click', () => {
-          if (mods.includes(m)) this._removeModule(m);
+          if (this.state.selectedModules.includes(m)) this._removeModule(m);
           else this._addModule(m);
           this._updateModuleSelectorUI();
         });
         item.innerHTML = `
-          <input type="checkbox" ${mods.includes(m) ? 'checked' : ''} readonly>
+          <input type="checkbox" ${isSelected ? 'checked' : ''} readonly>
           <span class="ms-module-name">${m}</span>
           <span class="ms-module-count">${counts[m]}词</span>
         `;
@@ -454,7 +454,10 @@ const App = {
   loadSelectedModules() {
     try {
       const s = localStorage.getItem('vocab-modules-v1');
-      if (s) this.state.selectedModules = JSON.parse(s);
+      if (s) {
+        const arr = JSON.parse(s);
+        this.state.selectedModules = Array.isArray(arr) ? arr : [];
+      }
     } catch (_) {
       this.state.selectedModules = [];
     }
