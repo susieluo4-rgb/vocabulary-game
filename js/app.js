@@ -731,42 +731,20 @@ const App = {
     document.getElementById('ms-overlay')?.addEventListener('click', () => this._closeModuleSelector());
     // 开始学习
     document.getElementById('ms-start')?.addEventListener('click', () => {
+      // 确认选择，关闭抽屉并回到首页（不清除 pendingMode，保留用户选的模式）
       this._closeModuleSelector();
-      // 根据当前按钮触发的模式启动
-      const mode = this._pendingMode || 'flashcard';
-      const minWords = mode === 'matching' ? 5 : mode === 'quiz' ? 4 : 2;
-      const words = this.getSelectedWords();
-      if (words.length < minWords) {
-        alert(`至少需要 ${minWords} 个单词，请选择更多模块`);
-        return;
-      }
-      this.state.lastMode = mode;
-      this._roundCoins = 0;
-      this._hadPerfectRound = false;
-      const sorted = this.getWordsSmartSorted();
-      const shuffled = this.shuffle(sorted);
-      switch (mode) {
-        case 'flashcard': Flashcard.init(shuffled); break;
-        case 'quiz':      Quiz.init(shuffled);      break;
-        case 'spelling':  Spelling.init(shuffled);  break;
-        case 'matching':  Matching.init(shuffled);   break;
-      }
     });
 
     document.getElementById('btn-flashcard').addEventListener('click', () => {
-      this._pendingMode = 'flashcard';
       this._showPreview('flashcard', 2);
     });
     document.getElementById('btn-quiz').addEventListener('click', () => {
-      this._pendingMode = 'quiz';
       this._showPreview('quiz', 4);
     });
     document.getElementById('btn-spelling').addEventListener('click', () => {
-      this._pendingMode = 'spelling';
       this._showPreview('spelling', 2);
     });
     document.getElementById('btn-matching').addEventListener('click', () => {
-      this._pendingMode = 'matching';
       this._showPreview('matching', 5);
     });
 
