@@ -615,7 +615,7 @@ const App = {
     if (mods.includes('错题本')) {
       const others = mods.filter(m => m !== '错题本');
       const base = others.length > 0 ? WORDS.filter(w => others.includes(w.unit)) : [...WORDS];
-      const wrongSet = new Set(this.getReviewWords().map(w => w.word));
+      const wrongSet = new Set(this.getDueReviewWords().map(w => w.word));
       return base.filter(w => wrongSet.has(w.word));
     }
     return WORDS.filter(w => mods.includes(w.unit));
@@ -630,6 +630,25 @@ const App = {
     });
   },
 
+  // 获取今日应复习的词（遗忘曲线驱动）
+  getDueReviewWords() {
+    const mods = this.state.selectedModules;
+    const today = new Date().toDateString();
+    return WORDS.filter(w => {
+      if (mods.length > 0 && !mods.includes(w.unit)) return false;
+      const p = this.state.progress[w.word];
+      if (!p) return false;  // 从未学过的词不算复习
+      // 无 nextReview 字段的旧记录：视为今天应复习
+      if (!p.nextReview) return true;
+      return p.nextReview <= today;
+    }).sort((a, b) => {
+      // overdue 最久的排最前（nextReview 越早越紧急）
+      const pa = this.state.progress[a.word]?.nextReview || '';
+      const pb = this.state.progress[b.word]?.nextReview || '';
+      return pa.localeCompare(pb);
+    });
+  },
+
   // 构建每日任务混合词池：新词 + 错题 + 随机已学词（去重）
   getTaskWordPool(count) {
     const allWords = this.getSelectedWords();
@@ -639,8 +658,8 @@ const App = {
       allWords.filter(w => this.isNewWordToday(w.word))
     );
 
-    // 2. 历史错题（曾犯过错，含今日新词中可能也有错的）
-    const reviewWords = this.shuffle(this.getReviewWords());
+    // 2. 遗忘曲线应复习的词（按 overdue 排序）
+    const reviewWords = this.shuffle(this.getDueReviewWords());
 
     // 3. 之前学过的词（已学但非今日新，也非错题）
     const learnedWords = this.shuffle(allWords.filter(w => {
@@ -894,6 +913,38 @@ const App = {
     }
   },
 
+  // 遗忘曲线调度（简化 SM-2），每次答题后更新复习间隔
+  _updateSpacedRepetition(word, correct) {
+    const p = this.state.progress[word];
+    if (!p) return;
+    const today = new Date().toDateString();
+
+    if (correct) {
+      // 答对了：延长复习间隔
+      if (p.repetitions === 0 || p.repetitions === undefined) {
+        p.interval = 1;
+      } else if (p.repetitions === 1) {
+        p.interval = 3;
+      } else {
+        p.interval = Math.round((p.interval || 1) * (p.easeFactor || 2.5));
+      }
+      p.repetitions = (p.repetitions || 0) + 1;
+      p.easeFactor = Math.max(1.3, parseFloat((p.easeFactor || 2.5).toFixed(1)) + 0.1);
+      p.lastCorrect = true;
+    } else {
+      // 答错了：退回间隔，退回重复次数
+      p.repetitions = 0;
+      p.interval = 1;
+      p.easeFactor = Math.max(1.3, parseFloat((p.easeFactor || 2.5).toFixed(1)) - 0.2);
+      p.lastCorrect = false;
+    }
+
+    const next = new Date();
+    next.setDate(next.getDate() + (p.interval || 1));
+    p.lastReviewed = today;
+    p.nextReview = next.toDateString();
+  },
+
   saveProgress(word, correct) {
     const isNew = !this.state.progress[word] || (this.state.progress[word].correct + this.state.progress[word].errors) === 0;
     if (!this.state.progress[word]) {
@@ -902,6 +953,7 @@ const App = {
     correct
       ? this.state.progress[word].correct++
       : this.state.progress[word].errors++;
+    this._updateSpacedRepetition(word, correct);
     try {
       localStorage.setItem('vocab-progress-v1', JSON.stringify(this.state.progress));
     } catch (_) {}
@@ -924,12 +976,16 @@ const App = {
   },
 
   // ── 按熟悉度排序（陌生词优先）────────────────────────────────
-  //陌生度分数：未学过=1.0（最高优先），答错越多越优先，答对越多越靠后
+  // 遗忘紧急度：overdue 越多越优先（间隔已到却未复习的词）
   getUnfamiliarity(word) {
     const p = this.state.progress[word];
-    if (!p || (p.correct + p.errors) === 0) return 1.0; // 未学过，优先
-    const total = p.correct + p.errors;
-    return p.errors / total; // 错误率越高越靠前
+    if (!p || (p.correct + p.errors) === 0) return 1.0; // 未学过=最高优先
+    const today = new Date().toDateString();
+    const next = p.nextReview || today;
+    const overdue = (new Date(today) - new Date(next)) / 86400000; // 天数差
+    // overdue > 0 表示该复习了，越大约优先；无 nextReview 的旧词优先复习
+    if (!p.nextReview) return 999;
+    return overdue;
   },
 
   // 获取打乱后的词库，按陌生度从高到低排序
@@ -1043,9 +1099,9 @@ const App = {
     });
 
     const reviewBtn = document.getElementById('btn-review');
-    const reviewCount = this.getReviewWords().length;
+    const reviewCount = this.getDueReviewWords().length;
     if (reviewBtn) {
-      reviewBtn.textContent = `错题本 (${reviewCount} 词)`;
+      reviewBtn.textContent = `📖 复习 (${reviewCount} 词)`;
       reviewBtn.style.display = reviewCount > 0 ? 'block' : 'none';
     }
   },
@@ -1096,7 +1152,7 @@ const App = {
     });
 
     document.getElementById('btn-review').addEventListener('click', () => {
-      const words = this.getReviewWords().map(w => this.getWordObj(w));
+      const words = this.getDueReviewWords().map(w => this.getWordObj(w));
       if (words.length < 4) {
         Flashcard.init(this.shuffle(words));
       } else {
