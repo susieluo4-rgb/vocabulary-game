@@ -26,7 +26,7 @@ const App = {
   },
 
   // ── 每日任务系统 ────────────────────────────────────────────
-  DAILY_NEW_WORDS: 5,     // 每天新学目标词数
+  DAILY_NEW_WORDS: 10,     // 每天新学目标词数
   DAILY_REVIEW_GOAL: 10,  // 每天复习目标词数
   newWordsToday: 0,        // 今日新学词数
   reviewWordsToday: 0,     // 今日复习词数（历史错题）
@@ -48,27 +48,36 @@ const App = {
           this.newWordsToday = 0;
           this.reviewWordsToday = 0;
           this.newWordsLearnedSet = new Set();
+          this._taskFlowCompleted = false;
+          this._completedModes = {};
         } else {
           this.newWordsToday = data.newWordsToday || 0;
           this.reviewWordsToday = data.reviewWordsToday || 0;
           this.newWordsLearnedSet = new Set(data.newWordsLearnedSet || []);
+          this._taskFlowCompleted = !!data.taskFlowCompleted;
+          this._completedModes = data.taskModesCompleted || {};
         }
       }
     } catch (_) {
       this.newWordsToday = 0;
       this.reviewWordsToday = 0;
       this.newWordsLearnedSet = new Set();
+      this._taskFlowCompleted = false;
     }
   },
 
   saveDailyTasks() {
     try {
-      localStorage.setItem('vocab-daily-v1', JSON.stringify({
-        date: new Date().toDateString(),
-        newWordsToday: this.newWordsToday,
-        reviewWordsToday: this.reviewWordsToday,
-        newWordsLearnedSet: [...this.newWordsLearnedSet]
-      }));
+      const existing = localStorage.getItem('vocab-daily-v1');
+      const data = existing ? JSON.parse(existing) : {};
+      data.date = new Date().toDateString();
+      data.newWordsToday = this.newWordsToday;
+      data.reviewWordsToday = this.reviewWordsToday;
+      data.newWordsLearnedSet = [...this.newWordsLearnedSet];
+      // 保留打卡流程状态
+      data.taskModesCompleted = data.taskModesCompleted || {};
+      data.taskFlowCompleted = data.taskFlowCompleted || false;
+      localStorage.setItem('vocab-daily-v1', JSON.stringify(data));
     } catch (_) {}
   },
 
@@ -159,6 +168,232 @@ const App = {
     if (taskCoinsEl) {
       taskCoinsEl.textContent = `今日赚取 ${this.coins.todayCoins} 金币`;
     }
+  },
+
+  // ── 每日任务打卡流程 ────────────────────────────────────────
+  DAILY_TASK_MODES: ['flashcard', 'quiz', 'matching', 'spelling'],
+
+  _inTaskFlow: false,
+  _taskFlowCompleted: false,  // 今日打卡是否已完成
+  _completedModes: {},         // 内存中的完成状态 { mode: true }，避免 localStorage 时序问题
+
+  // 加载打卡状态
+  loadDailyTaskFlow() {
+    try {
+      const s = localStorage.getItem('vocab-daily-v1');
+      if (s) {
+        const data = JSON.parse(s);
+        const today = new Date().toDateString();
+        if (data.date === today) {
+          this._taskFlowCompleted = !!data.taskFlowCompleted;
+        } else {
+          this._taskFlowCompleted = false;
+        }
+      }
+    } catch (_) {
+      this._taskFlowCompleted = false;
+    }
+  },
+
+  saveDailyTaskFlow() {
+    this.saveDailyTasks(); // saveDailyTasks now also saves taskFlowCompleted
+  },
+
+  // 打卡流程：进入某个模式
+  _enterTaskMode(mode) {
+    this.state.lastMode = mode; // 记录当前模式，确保完成时能用
+    // 如果该任务已完成，提示不能重复做
+    if (this._isTaskModeCompleted(mode)) {
+      alert('该任务今日已完成！');
+      return;
+    }
+    this._inTaskFlow = true;
+    // 关闭抽屉
+    document.getElementById('module-selector')?.classList.remove('active');
+    document.getElementById('ms-overlay')?.classList.remove('active');
+
+    let words;
+    const minWords = { flashcard: 2, quiz: 4, spelling: 2, matching: 5 }[mode];
+
+    if (mode === 'flashcard') {
+      // 新词优先，取 DAILY_NEW_WORDS 个
+      const pool = this.getWordsSmartSorted().filter(w => this.isNewWordToday(w.word));
+      const newWords = this.shuffle(pool).slice(0, this.DAILY_NEW_WORDS);
+      if (newWords.length < 2) {
+        alert('没有足够的新单词了，可以直接开始四选一！');
+        return;
+      }
+      Flashcard.init(newWords);
+    } else if (mode === 'quiz') {
+      // 混合新词+错题，共10题
+      const allWords = this.getSelectedWords();
+      const reviewWords = this.shuffle(this.getReviewWords()).slice(0, 3);
+      const newPool = allWords.filter(w => this.isNewWordToday(w.word));
+      const newWords = this.shuffle(newPool).slice(0, 7);
+      // 凑够10题，不够就补
+      const combined = this.shuffle([...newWords, ...reviewWords]).slice(0, 10);
+      if (combined.length < 4) {
+        alert('词汇量不足，请选择更多模块！');
+        return;
+      }
+      this.state.lastMode = 'quiz';
+      Quiz.init(combined);
+    } else if (mode === 'matching') {
+      const allWords = this.getSelectedWords();
+      if (allWords.length < 5) {
+        alert('连连看至少需要5个单词，请选择更多模块！');
+        return;
+      }
+      this.state.lastMode = 'matching';
+      Matching.init(this.shuffle(allWords));
+    } else if (mode === 'spelling') {
+      // 拼写：用今天新学的词（和闪卡一致）
+      const pool = this.getWordsSmartSorted().filter(w => this.isNewWordToday(w.word));
+      const words = this.shuffle(pool).slice(0, this.DAILY_NEW_WORDS);
+      if (words.length < 2) {
+        alert('没有足够的新单词了！');
+        return;
+      }
+      this.state.lastMode = 'spelling';
+      Spelling.init(words);
+    }
+  },
+
+  _isTaskModeCompleted(mode) {
+    // 优先读内存（避免 localStorage 读写时序问题）
+    if (this._completedModes[mode]) return true;
+    // 兜底读 localStorage（页面刷新后内存丢失）
+    try {
+      const s = localStorage.getItem('vocab-daily-v1');
+      if (!s) return false;
+      const data = JSON.parse(s);
+      const today = new Date().toDateString();
+      if (data.date !== today) return false;
+      return !!(data.taskModesCompleted && data.taskModesCompleted[mode]);
+    } catch (_) {
+      return false;
+    }
+  },
+
+  _markTaskModeCompleted(mode) {
+    // 先更新内存，再写 localStorage
+    this._completedModes[mode] = true;
+    this._taskFlowCompleted = true;
+    try {
+      const s = localStorage.getItem('vocab-daily-v1');
+      const data = s ? JSON.parse(s) : {};
+      data.date = new Date().toDateString();
+      if (!data.taskModesCompleted) data.taskModesCompleted = {};
+      data.taskModesCompleted[mode] = true;
+      data.taskFlowCompleted = true;
+      data.newWordsToday = this.newWordsToday;
+      data.reviewWordsToday = this.reviewWordsToday;
+      data.newWordsLearnedSet = [...this.newWordsLearnedSet];
+      localStorage.setItem('vocab-daily-v1', JSON.stringify(data));
+    } catch (_) {}
+  },
+
+  // 任务模式完成后的回调
+  // 返回 true = 全部完成（需显示完成页）；返回 false = 还有下一任务
+  onTaskModeComplete(mode) {
+    this._markTaskModeCompleted(mode);
+    this.updateDailyTasksUI();
+    this._inTaskFlow = false;
+    return this.DAILY_TASK_MODES.every(m => this._isTaskModeCompleted(m));
+  },
+
+  // 显示每日任务屏幕
+  showDailyTaskScreen(forceAllDone = false) {
+    const modes = this.DAILY_TASK_MODES;
+    // 更新每个任务卡片的badge
+    for (const mode of modes) {
+      const card = document.getElementById('dt-card-' + mode);
+      const statusEl = document.getElementById('dt-status-' + mode);
+      if (!statusEl) continue;
+      const done = this._isTaskModeCompleted(mode);
+      if (done) {
+        statusEl.innerHTML = '<span class="dt-badge dt-badge-done">✓ 已完成</span>';
+        if (card) card.style.opacity = '0.7';
+      } else {
+        statusEl.innerHTML = '<span class="dt-badge dt-badge-pending">开始</span>';
+        if (card) card.style.opacity = '1';
+      }
+    }
+
+    const rewardSection = document.getElementById('dt-reward-section');
+    const completedSection = document.getElementById('dt-completed-section');
+    const bannerText = document.getElementById('dt-banner-text');
+    const bannerIcon = document.querySelector('.dt-banner-icon');
+
+    const allDone = modes.every(m => this._isTaskModeCompleted(m));
+    if (allDone || forceAllDone) {
+      // 已完成或即将完成（刚点最后一个任务）
+      if (rewardSection) rewardSection.classList.add('hidden');
+      if (completedSection) completedSection.classList.remove('hidden');
+      if (bannerText) bannerText.textContent = '🎉 太棒了！今日任务全部完成！';
+      if (bannerIcon) bannerIcon.textContent = '🎉';
+      this._taskFlowCompleted = true;
+      this.saveDailyTaskFlow();
+    } else {
+      // 还有任务未完成
+      if (rewardSection) rewardSection.classList.remove('hidden');
+      if (completedSection) completedSection.classList.add('hidden');
+      const completedCount = modes.filter(m => this._isTaskModeCompleted(m)).length;
+      if (bannerText) bannerText.textContent = `已完成 ${completedCount}/${modes.length} 个任务，继续加油！`;
+      if (bannerIcon) bannerIcon.textContent = '🎯';
+    }
+
+    this.showScreen('dailytask');
+  },
+
+  // 领取打卡奖励
+  _claimDailyReward() {
+    if (this._taskFlowCompleted) {
+      alert('今日奖励已领取！');
+      return;
+    }
+    const allDone = this.DAILY_TASK_MODES.every(m => this._isTaskModeCompleted(m));
+    if (!allDone) {
+      alert('请先完成所有任务再来领取奖励！');
+      return;
+    }
+    this._taskFlowCompleted = true;
+    this.saveDailyTaskFlow();
+    this.earn('daily-task', 20);
+    this.updateCoinBar();
+    this.createStarBurst(30);
+    alert('🎉 打卡成功！获得 +20 金币奖励！');
+    this.showDailyTaskScreen(true);
+  },
+
+  // ── 恢复出厂设置 ───────────────────────────────────────────
+  _resetAll() {
+    if (!confirm('确定要恢复出厂设置吗？所有学习进度、金币、每日任务记录将全部清除！')) return;
+    try {
+      localStorage.removeItem('vocab-progress-v1');
+      localStorage.removeItem('vocab-coins-v1');
+      localStorage.removeItem('vocab-daily-v1');
+      localStorage.removeItem('vocab-modules-v1');
+    } catch (_) {}
+    // 重置内存状态
+    this.state.progress = {};
+    this.coins = {
+      total: 0, todayCoins: 0, todayDate: '', lastPlayDate: '',
+      streakDays: 0, totalGames: 0, totalWordsLearned: 0,
+      flashcardGames: 0, quizGames: 0, spellingGames: 0, matchingGames: 0,
+      badges: {}, titleIndex: 0
+    };
+    this.newWordsToday = 0;
+    this.reviewWordsToday = 0;
+    this.newWordsLearnedSet = new Set();
+    this._taskFlowCompleted = false;
+    this._completedModes = {};
+    this.state.selectedModules = [];
+    this.updateCoinBar();
+    this.updateHomeProgress();
+    this.updateDailyTasksUI();
+    this.showScreen('home');
+    alert('已恢复出厂设置！');
   },
 
   // ── 每日任务系统 ────────────────────────────────────────────
@@ -782,6 +1017,45 @@ const App = {
 
     document.getElementById('btn-reset').addEventListener('click', () => this.resetProgress());
 
+    // 每日任务入口
+    document.getElementById('btn-daily-task')?.addEventListener('click', () => {
+      this.showDailyTaskScreen();
+    });
+
+    // 每日任务页返回
+    document.getElementById('btn-dt-back')?.addEventListener('click', () => {
+      this.showScreen('home');
+    });
+
+    // 结果页继续下一任务
+    document.getElementById('btn-next-task')?.addEventListener('click', () => {
+      const completedMode = this.state.lastMode; // 当前刚完成的是哪个
+      // 标记当前任务完成，返回是否全部完成
+      const allDone = (completedMode && this._inTaskFlow)
+        ? this.onTaskModeComplete(completedMode)
+        : false;
+
+      // 找到下一个未完成的任务
+      const modes = this.DAILY_TASK_MODES;
+      const currentIdx = modes.indexOf(completedMode);
+      let nextMode = null;
+      for (let i = currentIdx + 1; i < modes.length; i++) {
+        if (!this._isTaskModeCompleted(modes[i])) {
+          nextMode = modes[i];
+          break;
+        }
+      }
+
+      if (nextMode) {
+        // 直接进入下一个任务（不显示打卡页）
+        this._enterTaskMode(nextMode);
+      } else {
+        // 没有下一个任务了 → 显示打卡完成页（不设置 _taskFlowCompleted，等领取奖励时再设）
+        this._taskFlowCompleted = false; // 重置，避免影响
+        this.showDailyTaskScreen(true);
+      }
+    });
+
     document.getElementById('btn-retry').addEventListener('click', () => {
       const sorted = this.getWordsSmartSorted();
       const shuffled = this.shuffle(sorted);
@@ -796,6 +1070,11 @@ const App = {
     });
 
     document.getElementById('btn-home-from-results').addEventListener('click', () => {
+      // 任务流程中点回主页：先标记当前任务完成
+      if (this._inTaskFlow && this.state.lastMode) {
+        this.onTaskModeComplete(this.state.lastMode);
+      }
+      this._inTaskFlow = false;
       this.updateHomeProgress();
       this.updateCoinBar();
       this.updateDailyTasksUI();
@@ -883,6 +1162,19 @@ const App = {
     }
 
     if (stars === 3) this.createStarBurst(24);
+
+    // 任务流程：显示继续按钮
+    const btnRetry = document.getElementById('btn-retry');
+    const btnNextTask = document.getElementById('btn-next-task');
+    if (this._inTaskFlow) {
+      // 隐藏再来一次，显示继续下一任务
+      if (btnRetry) btnRetry.classList.add('hidden');
+      if (btnNextTask) btnNextTask.classList.remove('hidden');
+    } else {
+      if (btnRetry) btnRetry.classList.remove('hidden');
+      if (btnNextTask) btnNextTask.classList.add('hidden');
+    }
+
     this.showScreen('results');
   },
 

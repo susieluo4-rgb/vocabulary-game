@@ -11,6 +11,102 @@
 <body>
 
 <!-- ======================================================
+     屏幕 0 — 每日任务
+     ====================================================== -->
+<div id="screen-dailytask" class="screen">
+  <header class="dt-header">
+    <button class="btn-back" id="btn-dt-back">←</button>
+    <h2>📋 每日任务</h2>
+    <div style="width:44px"></div>
+  </header>
+
+  <div class="dt-body">
+    <!-- 打卡状态横幅 -->
+    <div id="dt-banner" class="dt-banner">
+      <div class="dt-banner-icon">🎯</div>
+      <div class="dt-banner-text" id="dt-banner-text">完成所有任务，领取奖励！</div>
+    </div>
+
+    <!-- 任务列表 -->
+    <div class="dt-task-list">
+      <!-- 任务1：闪卡新词学习 -->
+      <div class="dt-task-card" id="dt-card-flashcard" onclick="App._enterTaskMode('flashcard')">
+        <div class="dt-task-icon">🃏</div>
+        <div class="dt-task-info">
+          <div class="dt-task-name">新词学习</div>
+          <div class="dt-task-desc">用闪卡学习 10 个新单词</div>
+        </div>
+        <div class="dt-task-status" id="dt-status-flashcard">
+          <span class="dt-badge dt-badge-pending">未开始</span>
+        </div>
+      </div>
+
+      <!-- 任务2：四选一 -->
+      <div class="dt-task-card" id="dt-card-quiz" onclick="App._enterTaskMode('quiz')">
+        <div class="dt-task-icon">🎯</div>
+        <div class="dt-task-info">
+          <div class="dt-task-name">综合练习</div>
+          <div class="dt-task-desc">完成四选一 10 道题</div>
+        </div>
+        <div class="dt-task-status" id="dt-status-quiz">
+          <span class="dt-badge dt-badge-pending">未开始</span>
+        </div>
+      </div>
+
+      <!-- 任务3：连连看 -->
+      <div class="dt-task-card" id="dt-card-matching" onclick="App._enterTaskMode('matching')">
+        <div class="dt-task-icon">🔗</div>
+        <div class="dt-task-info">
+          <div class="dt-task-name">连连看</div>
+          <div class="dt-task-desc">完成连连看 1 局</div>
+        </div>
+        <div class="dt-task-status" id="dt-status-matching">
+          <span class="dt-badge dt-badge-pending">未开始</span>
+        </div>
+      </div>
+
+      <!-- 任务4：拼写练习 -->
+      <div class="dt-task-card" id="dt-card-spelling" onclick="App._enterTaskMode('spelling')">
+        <div class="dt-task-icon">✏️</div>
+        <div class="dt-task-info">
+          <div class="dt-task-name">拼写练习</div>
+          <div class="dt-task-desc">完成拼写练习 1 局</div>
+        </div>
+        <div class="dt-task-status" id="dt-status-spelling">
+          <span class="dt-badge dt-badge-pending">未开始</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 奖励区域 -->
+    <div class="dt-reward-section" id="dt-reward-section">
+      <div class="dt-reward-info">
+        <span class="dt-reward-icon">🪙</span>
+        <span class="dt-reward-text">完成打卡任务，奖励 <strong>+20 金币</strong></span>
+      </div>
+      <button class="btn btn-claim" id="btn-claim-reward" onclick="App._claimDailyReward()">
+        领取奖励
+      </button>
+    </div>
+
+    <!-- 恢复出厂 -->
+    <button class="btn-dt-reset" onclick="App._resetAll()">恢复出厂设置</button>
+
+    <!-- 完成任务后 -->
+    <div class="dt-completed-section hidden" id="dt-completed-section">
+      <div class="dt-completed-icon">🎉</div>
+      <div class="dt-completed-title">今日任务已全部完成！</div>
+      <div class="dt-completed-sub">明天再来学习更多单词吧～</div>
+      <button class="btn btn-primary" onclick="App.showScreen('home')" style="width:100%;margin-top:16px;">
+        返回首页
+      </button>
+      <button class="btn-dt-reset" onclick="App._resetAll()">恢复出厂设置</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ======================================================
      屏幕 1 — 首页
      ====================================================== -->
 <div id="screen-home" class="screen">
@@ -22,6 +118,7 @@
     <span>今日</span>
     <span id="coin-today">0</span>
     <span class="title-badge" id="title-badge">英语小白</span>
+    <button id="btn-daily-task" class="btn-daily-task" title="每日任务">📋</button>
     <button id="btn-achievements" class="btn-ach">🏅</button>
   </div>
 
@@ -278,8 +375,9 @@
     <div id="result-message">太棒了！你是单词小达人！</div>
 
     <div class="results-actions">
-      <button class="btn" id="btn-retry"             style="flex:1;background:var(--primary);color:#fff;">再来一次</button>
+      <button class="btn hidden" id="btn-retry"             style="flex:1;background:var(--primary);color:#fff;">再来一次</button>
       <button class="btn btn-ghost" id="btn-home-from-results" style="flex:1;">回主页</button>
+      <button class="btn btn-primary hidden" id="btn-next-task" style="flex:1;background:var(--green);">继续下一任务 →</button>
     </div>
   </div>
 </div>

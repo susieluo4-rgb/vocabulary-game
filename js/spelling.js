@@ -35,15 +35,20 @@ const Spelling = {
     rebind('btn-spell-speak',  'click',  this.speakCurrent);
     rebind('btn-spell-next',   'click',  this.next);
 
-    // 输入框 Enter 键提交
+    // 输入框 Enter 键提交（兼容 iPad 虚拟键盘 + 桌面回车）
     const input = document.getElementById('spell-input');
     if (this._bound['spell-input-key']) {
       input.removeEventListener('keydown', this._bound['spell-input-key']);
+      input.removeEventListener('keyup', this._bound['spell-input-key']);
     }
     this._bound['spell-input-key'] = (e) => {
-      if (e.key === 'Enter') this.submit();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.submit();
+      }
     };
     input.addEventListener('keydown', this._bound['spell-input-key']);
+    input.addEventListener('keyup', this._bound['spell-input-key']);
 
     // 实时更新字母框
     if (this._bound['spell-input-input']) {
@@ -84,6 +89,7 @@ const Spelling = {
     const input = document.getElementById('spell-input');
     input.value = '';
     input.disabled = false;
+    input.focus();  // 立即聚焦（iPad 虚拟键盘弹出）
 
     // 重置反馈区域
     document.getElementById('spell-feedback').textContent = '';
