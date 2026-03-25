@@ -6,6 +6,8 @@ const Matching = {
   matchedCount: 0,
   startTime: null,
   PAIR_COUNT: 5,
+  dailyRounds: 0,    // 每日任务累计轮数
+  dailyTotalScore: 0, // 每日任务累计得分
 
   init(words) {
     // 每轮随机取 PAIR_COUNT 对
@@ -169,13 +171,31 @@ const Matching = {
       ? `${mins}分${secs}秒`
       : `${secs}秒`;
 
+    this.dailyTotalScore += this.PAIR_COUNT;
     document.getElementById('match-timer').textContent = `用时：${timeStr}`;
-    document.getElementById('btn-match-next').classList.remove('hidden');
 
-    // 全部配对，显示结果
-    setTimeout(() => {
-      App.showResults(this.PAIR_COUNT, this.PAIR_COUNT, `完成用时：${timeStr}`);
-    }, 1000);
+    // 每日任务模式：5轮完成才算任务结束
+    if (App._inTaskFlow) {
+      this.dailyRounds++;
+      if (this.dailyRounds >= 5) {
+        // 5轮全部完成 → 显示结果并进入下一任务
+        document.getElementById('btn-match-next').classList.remove('hidden');
+        setTimeout(() => {
+          App.showResults(this.dailyTotalScore, this.dailyTotalScore, '完成5局');
+          this.dailyRounds = 0;
+          this.dailyTotalScore = 0;
+        }, 1000);
+      } else {
+        // 继续下一轮
+        document.getElementById('btn-match-next').classList.remove('hidden');
+      }
+    } else {
+      // 自由模式：直接显示结果
+      document.getElementById('btn-match-next').classList.remove('hidden');
+      setTimeout(() => {
+        App.showResults(this.PAIR_COUNT, this.PAIR_COUNT, `完成用时：${timeStr}`);
+      }, 1000);
+    }
   },
 
   nextRound() {

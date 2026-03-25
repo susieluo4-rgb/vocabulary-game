@@ -7,6 +7,7 @@ const Flashcard = {
   known: 0,
   total: 0,
   flipped: false,
+  _busy: false,    // 防止动画中途渲染下一张卡
 
   init(words) {
     this.words = words;
@@ -15,6 +16,7 @@ const Flashcard = {
     this.known = 0;
     this.total = words.length;
     this.flipped = false;
+    this._busy = false;
 
     App.startGame('flashcard');
     App.showScreen('flashcard');
@@ -41,10 +43,13 @@ const Flashcard = {
   },
 
   handleCardClick() {
-    if (!this.flipped) this.flip();
+    if (!this.flipped && !this._busy) this.flip();
   },
 
   render() {
+    // 动画中途不渲染下一张卡
+    if (this._busy) return;
+
     const word = this.queue[this.index];
     const total = this.total;
     const done = this.index; // approximate progress
@@ -92,29 +97,41 @@ const Flashcard = {
   },
 
   know() {
+    if (this._busy) return;
     App.saveProgress(this.queue[this.index].word, true);
     App.earn('flashcard', 2);   // 认识 +2 金币
     this.known++;
-    this.advance();
+    this._advance();
   },
 
   again() {
+    if (this._busy) return;
     App.saveProgress(this.queue[this.index].word, false);
     // 把这张卡移到队尾，再练一次（无金币）
     const card = this.queue.splice(this.index, 1)[0];
     this.queue.push(card);
     // 若 index 越界则回到 0
     if (this.index >= this.queue.length) this.index = 0;
-    this.render();
+    // 动画延迟渲染，避免泄露下一张内容
+    this._busy = true;
+    setTimeout(() => {
+      this._busy = false;
+      this.render();
+    }, 650);
   },
 
-  advance() {
+  _advance() {
     this.index++;
     if (this.index >= this.queue.length) {
       // 闪卡完成
       App.showResults(this.known, this.total);
     } else {
-      this.render();
+      // 等待翻转动画完成后再渲染下一张
+      this._busy = true;
+      setTimeout(() => {
+        this._busy = false;
+        this.render();
+      }, 650);
     }
   }
 };
