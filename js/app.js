@@ -218,7 +218,7 @@ const App = {
     if (mode === 'flashcard') {
       // 新词优先，取 DAILY_NEW_WORDS 个（20个）
       const pool = this.getWordsSmartSorted().filter(w => this.isNewWordToday(w.word));
-      const newWords = this.shuffle(pool).slice(0, this.DAILY_NEW_WORDS);
+      const newWords = this.shuffle(pool).slice(0, this.DAILY_NEW_WORDS).map(w => this.getWordObj(w));
       if (newWords.length < 2) {
         alert('没有足够的新单词了，可以直接开始四选一！');
         return;
@@ -226,7 +226,7 @@ const App = {
       Flashcard.init(newWords);
     } else if (mode === 'quiz') {
       // 混合池：新词 + 错题 + 随机已学词，共10题
-      const quizWords = this.getTaskWordPool(10);
+      const quizWords = this.getTaskWordPool(10).map(w => this.getWordObj(w));
       if (quizWords.length < 4) {
         alert('词汇量不足，请选择更多模块！');
         return;
@@ -240,12 +240,12 @@ const App = {
         return;
       }
       // 混合池取5对=10词
-      const matchWords = this.getTaskWordPool(10);
+      const matchWords = this.getTaskWordPool(10).map(w => this.getWordObj(w));
       this.state.lastMode = 'matching';
       Matching.init(matchWords.slice(0, 5));
     } else if (mode === 'spelling') {
       // 混合池：10词（新词 + 错题 + 随机已学词）
-      const spellingWords = this.getTaskWordPool(10);
+      const spellingWords = this.getTaskWordPool(10).map(w => this.getWordObj(w));
       if (spellingWords.length < 2) {
         alert('没有足够的新单词了！');
         return;
@@ -430,6 +430,7 @@ const App = {
     this.loadCoins();
     this.loadDailyTasks();
     this.loadSelectedModules();
+    this.loadCustomWords();
     this.bindHomeEvents();
     this.updateHomeProgress();
     this.updateCoinBar();
@@ -440,6 +441,14 @@ const App = {
     // 成就页面入口
     document.getElementById('btn-achievements')?.addEventListener('click', () => this.showAchievements());
     document.getElementById('btn-back-from-achievements')?.addEventListener('click', () => this.showScreen('home'));
+    // 词库编辑入口
+    document.getElementById('btn-word-editor')?.addEventListener('click', () => this.showWordEditor());
+    document.getElementById('btn-we-back')?.addEventListener('click', () => this.showScreen('home'));
+    // 词库搜索
+    document.getElementById('we-search')?.addEventListener('input', (e) => {
+      this._editorSearch = e.target.value;
+      this._renderWordEditor();
+    });
   },
 
   // ── 金币加载/保存 ────────────────────────────────────────────
@@ -564,9 +573,51 @@ const App = {
   },
 
   // ── 词库查询 ─────────────────────────────────────────────────
+  // 自定义词库（用户编辑过的不正宗）
+  _customWords: {},
+
+  loadCustomWords() {
+    try {
+      const s = localStorage.getItem('vocab-words-custom-v1');
+      if (s) this._customWords = JSON.parse(s);
+    } catch (_) { this._customWords = {}; }
+  },
+
+  saveCustomWord(word, phonetic, meaning) {
+    if (!phonetic && !meaning) {
+      delete this._customWords[word];
+    } else {
+      this._customWords[word] = { phonetic, meaning };
+    }
+    try {
+      localStorage.setItem('vocab-words-custom-v1', JSON.stringify(this._customWords));
+    } catch (_) {}
+  },
+
+  // 获取单词（合并自定义修改）
+  getWordObj(original) {
+    const custom = this._customWords[original.word];
+    if (custom) {
+      return {
+        unit: original.unit,
+        word: original.word,
+        phonetic: custom.phonetic !== undefined ? custom.phonetic : original.phonetic,
+        meaning: custom.meaning !== undefined ? custom.meaning : original.meaning
+      };
+    }
+    return original;
+  },
+
   getSelectedWords() {
     const mods = this.state.selectedModules;
     if (mods.length === 0) return [...WORDS];
+    // 错题本特殊处理
+    if (mods.includes('错题本')) {
+      const others = mods.filter(m => m !== '错题本');
+      const base = others.length > 0 ? WORDS.filter(w => others.includes(w.unit)) : [...WORDS];
+      const wrongSet = new Set(this.getReviewWords().map(w => w.word));
+      return base.filter(w => wrongSet.has(w.word));
+    }
     return WORDS.filter(w => mods.includes(w.unit));
   },
 
@@ -630,10 +681,13 @@ const App = {
     }
     // 排序：四上 → 四下 → 五上 → 五下
     const order = ['四上', '四下', '五上', '五下'];
-    return order.filter(b => map[b]).map(book => ({
+    const result = order.filter(b => map[b]).map(book => ({
       book,
       modules: [...map[book]].sort()
     }));
+    // 追加错题本特殊入口
+    result.push({ book: '📋 错题本', modules: ['错题本'] });
+    return result;
   },
 
   _showModuleSelector() {
@@ -921,7 +975,7 @@ const App = {
 
     // 智能排序取词
     const sorted = this.getWordsSmartSorted();
-    const words = this.shuffle(sorted);
+    const words = this.shuffle(sorted).map(w => this.getWordObj(w));
 
     // 保存待启动游戏
     this._pendingGame = { mode, words };
@@ -944,6 +998,7 @@ const App = {
       item.innerHTML = `
         <span class="word-badge" style="background:${color}">${badge}</span>
         <span class="word-english">${w.word}</span>
+        ${w.phonetic ? `<span class="word-phonetic">${w.phonetic}</span>` : ''}
         <span class="word-meaning">${w.meaning}</span>
       `;
       list.appendChild(item);
@@ -1041,7 +1096,7 @@ const App = {
     });
 
     document.getElementById('btn-review').addEventListener('click', () => {
-      const words = this.getReviewWords();
+      const words = this.getReviewWords().map(w => this.getWordObj(w));
       if (words.length < 4) {
         Flashcard.init(this.shuffle(words));
       } else {
@@ -1211,6 +1266,72 @@ const App = {
     }
 
     this.showScreen('results');
+  },
+
+  // ── 词库编辑 ─────────────────────────────────────────────────
+  _editorSearch: '',
+
+  showWordEditor() {
+    this._editorSearch = '';
+    this._renderWordEditor();
+    this.showScreen('wordeditor');
+  },
+
+  _renderWordEditor() {
+    const list = document.getElementById('we-list');
+    const searchInput = document.getElementById('we-search');
+    const countEl = document.getElementById('we-count');
+
+    list.innerHTML = '';
+
+    const q = this._editorSearch.toLowerCase();
+    const filtered = WORDS.filter(w =>
+      w.word.toLowerCase().includes(q) ||
+      w.meaning.toLowerCase().includes(q) ||
+      (w.phonetic || '').toLowerCase().includes(q)
+    );
+
+    if (countEl) countEl.textContent = `${filtered.length} 词`;
+
+    filtered.forEach(w => {
+      const custom = this._customWords[w.word] || {};
+      const phonetic = custom.phonetic !== undefined ? custom.phonetic : (w.phonetic || '');
+      const meaning = custom.meaning !== undefined ? custom.meaning : w.meaning;
+      const isModified = this._customWords[w.word];
+
+      const item = document.createElement('div');
+      item.className = 'we-item' + (isModified ? ' we-modified' : '');
+      item.innerHTML = `
+        <div class="we-word">${w.word}</div>
+        <div class="we-unit">${w.unit}</div>
+        <input class="we-phonetic" type="text" value="${phonetic}"
+          placeholder="音标" data-word="${w.word}" />
+        <input class="we-meaning" type="text" value="${meaning}"
+          placeholder="中文释义" data-word="${w.word}" />
+        <div class="we-actions">
+          <button class="btn btn-small ${isModified ? 'btn-ghost' : 'btn-primary'}"
+            onclick="App._saveWordEdit('${w.word}')">
+            ${isModified ? '✓' : '保存'}
+          </button>
+          ${isModified ? `<button class="btn btn-small btn-ghost" onclick="App._resetWord('${w.word}')">还原</button>` : ''}
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  },
+
+  _saveWordEdit(word) {
+    const item = document.querySelector(`.we-phonetic[data-word="${word}"]`)?.closest('.we-item');
+    const phonetic = item?.querySelector('.we-phonetic')?.value || '';
+    const meaning = item?.querySelector('.we-meaning')?.value || '';
+    this.saveCustomWord(word, phonetic, meaning);
+    this._renderWordEditor();
+  },
+
+  _resetWord(word) {
+    delete this._customWords[word];
+    try { localStorage.setItem('vocab-words-custom-v1', JSON.stringify(this._customWords)); } catch (_) {}
+    this._renderWordEditor();
   },
 
   // ── 成就页面 ─────────────────────────────────────────────────

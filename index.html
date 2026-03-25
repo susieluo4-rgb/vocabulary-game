@@ -184,6 +184,7 @@
   <!-- 错题本 + 重置 -->
   <div class="secondary-actions">
     <button id="btn-review" style="display:none">错题本</button>
+    <button id="btn-word-editor">编辑词库</button>
     <button id="btn-reset">清除进度</button>
   </div>
 
@@ -452,6 +453,22 @@
   </div>
 </div>
 <div id="ms-overlay" class="ms-overlay"></div>
+
+<!-- ======================================================
+     屏幕 — 词库编辑
+     ====================================================== -->
+<div id="screen-wordeditor" class="screen">
+  <header class="game-header" style="gap:8px">
+    <button class="btn-back" id="btn-we-back">←</button>
+    <span style="font-weight:700;font-size:1.1rem">编辑词库</span>
+    <div style="flex:1">
+      <input id="we-search" class="we-search" type="search"
+        placeholder="搜索单词 / 音标 / 释义…" />
+    </div>
+    <span id="we-count" style="font-size:0.85rem;color:var(--muted);min-width:40px;text-align:right">506 词</span>
+  </header>
+  <div id="we-list" class="we-list"></div>
+</div>
 
 <!-- JS 加载顺序：words → app → 各模式 -->
 <script src="js/words.js"></script>

@@ -101,7 +101,16 @@ const Flashcard = {
     App.saveProgress(this.queue[this.index].word, true);
     App.earn('flashcard', 2);   // 认识 +2 金币
     this.known++;
-    this._advance();
+    this._busy = true;
+    // 先翻回正面（当前卡片），等动画完成后再渲染下一张
+    this.flipped = false;
+    document.getElementById('flash-card').classList.remove('flipped');
+    document.getElementById('fc-actions').classList.add('hidden');
+    document.getElementById('fc-tap-hint').classList.remove('hidden');
+    setTimeout(() => {
+      this._busy = false;
+      this._advance();
+    }, 400);
   },
 
   again() {
@@ -110,28 +119,25 @@ const Flashcard = {
     // 把这张卡移到队尾，再练一次（无金币）
     const card = this.queue.splice(this.index, 1)[0];
     this.queue.push(card);
-    // 若 index 越界则回到 0
     if (this.index >= this.queue.length) this.index = 0;
-    // 动画延迟渲染，避免泄露下一张内容
+    // 先翻回正面，等动画完成后再渲染当前卡片
     this._busy = true;
+    this.flipped = false;
+    document.getElementById('flash-card').classList.remove('flipped');
+    document.getElementById('fc-actions').classList.add('hidden');
+    document.getElementById('fc-tap-hint').classList.remove('hidden');
     setTimeout(() => {
       this._busy = false;
       this.render();
-    }, 650);
+    }, 400);
   },
 
   _advance() {
     this.index++;
     if (this.index >= this.queue.length) {
-      // 闪卡完成
       App.showResults(this.known, this.total);
     } else {
-      // 等待翻转动画完成后再渲染下一张
-      this._busy = true;
-      setTimeout(() => {
-        this._busy = false;
-        this.render();
-      }, 650);
+      this.render();
     }
   }
 };
