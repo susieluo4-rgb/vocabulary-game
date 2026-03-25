@@ -331,6 +331,13 @@ html, body {
   letter-spacing: 2px;
   text-align: center;
 }
+.fc-phonetic {
+  font-size: 1.2rem;
+  color: rgba(255,255,255,0.75);
+  text-align: center;
+  margin-top: 4px;
+  font-style: italic;
+}
 #fc-tap-hint {
   font-size: 0.85rem;
   opacity: 0.75;
@@ -483,6 +490,12 @@ html, body {
   font-size: 2rem;
   font-weight: 800;
   color: var(--purple);
+}
+.spell-phonetic {
+  font-size: 1.1rem;
+  color: var(--muted);
+  margin-top: 4px;
+  font-style: italic;
 }
 #spell-example {
   font-size: 0.88rem;

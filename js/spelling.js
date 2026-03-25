@@ -80,6 +80,7 @@ const Spelling = {
 
     // 中文提示
     document.getElementById('spell-meaning').textContent = word.meaning;
+    document.getElementById('spell-phonetic').textContent = word.phonetic || '';
     document.getElementById('spell-example').textContent = word.example || '';
 
     // 字母框（初始全空）

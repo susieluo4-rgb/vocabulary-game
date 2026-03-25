@@ -67,6 +67,7 @@ const Flashcard = {
 
     // Card faces
     document.getElementById('fc-word').textContent = word.word;
+    document.getElementById('fc-phonetic').textContent = word.phonetic || '';
     document.getElementById('fc-meaning').textContent = word.meaning;
     document.getElementById('fc-example').textContent = word.example || '';
 

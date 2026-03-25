@@ -26,7 +26,7 @@ const App = {
   },
 
   // ── 每日任务系统 ────────────────────────────────────────────
-  DAILY_NEW_WORDS: 10,     // 每天新学目标词数
+  DAILY_NEW_WORDS: 20,     // 每天新学目标词数
   DAILY_REVIEW_GOAL: 10,  // 每天复习目标词数
   newWordsToday: 0,        // 今日新学词数
   reviewWordsToday: 0,     // 今日复习词数（历史错题）
@@ -216,7 +216,7 @@ const App = {
     const minWords = { flashcard: 2, quiz: 4, spelling: 2, matching: 5 }[mode];
 
     if (mode === 'flashcard') {
-      // 新词优先，取 DAILY_NEW_WORDS 个
+      // 新词优先，取 DAILY_NEW_WORDS 个（20个）
       const pool = this.getWordsSmartSorted().filter(w => this.isNewWordToday(w.word));
       const newWords = this.shuffle(pool).slice(0, this.DAILY_NEW_WORDS);
       if (newWords.length < 2) {
@@ -225,37 +225,33 @@ const App = {
       }
       Flashcard.init(newWords);
     } else if (mode === 'quiz') {
-      // 混合新词+错题，共10题
-      const allWords = this.getSelectedWords();
-      const reviewWords = this.shuffle(this.getReviewWords()).slice(0, 3);
-      const newPool = allWords.filter(w => this.isNewWordToday(w.word));
-      const newWords = this.shuffle(newPool).slice(0, 7);
-      // 凑够10题，不够就补
-      const combined = this.shuffle([...newWords, ...reviewWords]).slice(0, 10);
-      if (combined.length < 4) {
+      // 混合池：新词 + 错题 + 随机已学词，共10题
+      const quizWords = this.getTaskWordPool(10);
+      if (quizWords.length < 4) {
         alert('词汇量不足，请选择更多模块！');
         return;
       }
       this.state.lastMode = 'quiz';
-      Quiz.init(combined);
+      Quiz.init(quizWords);
     } else if (mode === 'matching') {
       const allWords = this.getSelectedWords();
       if (allWords.length < 5) {
         alert('连连看至少需要5个单词，请选择更多模块！');
         return;
       }
+      // 混合池取5对=10词
+      const matchWords = this.getTaskWordPool(10);
       this.state.lastMode = 'matching';
-      Matching.init(this.shuffle(allWords));
+      Matching.init(matchWords.slice(0, 5));
     } else if (mode === 'spelling') {
-      // 拼写：用今天新学的词（和闪卡一致）
-      const pool = this.getWordsSmartSorted().filter(w => this.isNewWordToday(w.word));
-      const words = this.shuffle(pool).slice(0, this.DAILY_NEW_WORDS);
-      if (words.length < 2) {
+      // 混合池：10词（新词 + 错题 + 随机已学词）
+      const spellingWords = this.getTaskWordPool(10);
+      if (spellingWords.length < 2) {
         alert('没有足够的新单词了！');
         return;
       }
       this.state.lastMode = 'spelling';
-      Spelling.init(words);
+      Spelling.init(spellingWords);
     }
   },
 
@@ -581,6 +577,45 @@ const App = {
       const p = this.state.progress[w.word];
       return p && p.errors > 0;
     });
+  },
+
+  // 构建每日任务混合词池：新词 + 错题 + 随机已学词（去重）
+  getTaskWordPool(count) {
+    const allWords = this.getSelectedWords();
+
+    // 1. 今日新词（按陌生度排序）
+    const newWords = this.shuffle(
+      allWords.filter(w => this.isNewWordToday(w.word))
+    );
+
+    // 2. 历史错题（曾犯过错，含今日新词中可能也有错的）
+    const reviewWords = this.shuffle(this.getReviewWords());
+
+    // 3. 之前学过的词（已学但非今日新，也非错题）
+    const learnedWords = this.shuffle(allWords.filter(w => {
+      if (this.isNewWordToday(w.word)) return false;
+      const p = this.state.progress[w.word];
+      return p && (p.correct + p.errors) > 0 && p.errors === 0;
+    }));
+
+    // 混合：优先新词，再补错题，最后补随机已学词
+    const pool = [];
+    const used = new Set();
+
+    for (const w of newWords) {
+      if (pool.length >= count) break;
+      if (!used.has(w.word)) { pool.push(w); used.add(w.word); }
+    }
+    for (const w of reviewWords) {
+      if (pool.length >= count) break;
+      if (!used.has(w.word)) { pool.push(w); used.add(w.word); }
+    }
+    for (const w of learnedWords) {
+      if (pool.length >= count) break;
+      if (!used.has(w.word)) { pool.push(w); used.add(w.word); }
+    }
+
+    return this.shuffle(pool);
   },
 
   // ── 模块选择抽屉 ─────────────────────────────────────────────
