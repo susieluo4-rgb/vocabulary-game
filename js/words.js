@@ -403,7 +403,7 @@ const WORDS = [
   { unit: "四下 M2", word: "bedtime", phonetic: "ˈbɛdˌtaɪm", meaning: "就寝时间" },
   { unit: "四下 M2", word: "chat", phonetic: "ʧæt", meaning: "聊天" },
   { unit: "四下 M2", word: "interesting", phonetic: "ˈɪntəˌrɛstɪŋ", meaning: "有趣的" },
-  { unit: "四下 M2", word: "themsel", phonetic: "themsel*", meaning: "他们自己" },
+  { unit: "四下 M2", word: "themselves", phonetic: "/ðəmˈsɛlvz/", meaning: "他们自己" },
   { unit: "四下 M2", word: "holiday", phonetic: "ˈhɑlɪˌdeɪ", meaning: "假期" },
   { unit: "四下 M2", word: "shell", phonetic: "ʃɛl", meaning: "贝壳" },
   { unit: "四下 M2", word: "sand", phonetic: "sænd", meaning: "沙子" },
