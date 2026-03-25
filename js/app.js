@@ -583,11 +583,11 @@ const App = {
     } catch (_) { this._customWords = {}; }
   },
 
-  saveCustomWord(word, phonetic, meaning) {
-    if (!phonetic && !meaning) {
+  saveCustomWord(word, phonetic, meaning, text) {
+    if (!phonetic && !meaning && !text) {
       delete this._customWords[word];
     } else {
-      this._customWords[word] = { phonetic, meaning };
+      this._customWords[word] = { phonetic, meaning, text };
     }
     try {
       localStorage.setItem('vocab-words-custom-v1', JSON.stringify(this._customWords));
@@ -600,7 +600,7 @@ const App = {
     if (custom) {
       return {
         unit: original.unit,
-        word: original.word,
+        word: custom.text !== undefined ? custom.text : original.word,
         phonetic: custom.phonetic !== undefined ? custom.phonetic : original.phonetic,
         meaning: custom.meaning !== undefined ? custom.meaning : original.meaning
       };
@@ -1279,7 +1279,6 @@ const App = {
 
   _renderWordEditor() {
     const list = document.getElementById('we-list');
-    const searchInput = document.getElementById('we-search');
     const countEl = document.getElementById('we-count');
 
     list.innerHTML = '';
@@ -1295,14 +1294,16 @@ const App = {
 
     filtered.forEach(w => {
       const custom = this._customWords[w.word] || {};
+      const text = custom.text !== undefined ? custom.text : w.word;
       const phonetic = custom.phonetic !== undefined ? custom.phonetic : (w.phonetic || '');
       const meaning = custom.meaning !== undefined ? custom.meaning : w.meaning;
-      const isModified = this._customWords[w.word];
+      const isModified = !!this._customWords[w.word];
 
       const item = document.createElement('div');
       item.className = 'we-item' + (isModified ? ' we-modified' : '');
       item.innerHTML = `
-        <div class="we-word">${w.word}</div>
+        <input class="we-text" type="text" value="${text}"
+          placeholder="英文" data-word="${w.word}" />
         <div class="we-unit">${w.unit}</div>
         <input class="we-phonetic" type="text" value="${phonetic}"
           placeholder="音标" data-word="${w.word}" />
@@ -1321,10 +1322,11 @@ const App = {
   },
 
   _saveWordEdit(word) {
-    const item = document.querySelector(`.we-phonetic[data-word="${word}"]`)?.closest('.we-item');
+    const item = document.querySelector(`.we-text[data-word="${word}"]`)?.closest('.we-item');
+    const text = item?.querySelector('.we-text')?.value || '';
     const phonetic = item?.querySelector('.we-phonetic')?.value || '';
     const meaning = item?.querySelector('.we-meaning')?.value || '';
-    this.saveCustomWord(word, phonetic, meaning);
+    this.saveCustomWord(word, phonetic, meaning, text);
     this._renderWordEditor();
   },
 
